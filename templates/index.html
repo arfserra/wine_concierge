@@ -221,30 +221,73 @@
         
         // Load collection statistics
         async function loadCollectionStats() {
-            try {
-                const response = await fetch('/api/wines');
-                const wines = await response.json();
-                
-                // Calculate statistics
-                const stats = {
-                    total: wines.length,
-                    red: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'red').length,
-                    white: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'white').length,
-                    rose: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'rosé').length,
-                    sparkling: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'sparkling').length
-                };
-                
-                // Update the stats in Alpine.js component
-                const component = document.querySelector('[x-data]').__x.$data;
-                component.collectionStats = stats;
-                component.loading = false;
-            } catch (error) {
-                console.error('Error loading collection stats:', error);
-                const component = document.querySelector('[x-data]').__x.$data;
-                component.loading = false;
-                component.error = true;
-            }
+    try {
+        const response = await fetch('/api/wines');
+        const wines = await response.json();
+        
+        // Calculate statistics
+        const stats = {
+            total: wines.length || 0,
+            red: wines.filter(wine => wine && wine.type && wine.type.toLowerCase() === 'red').length || 0,
+            white: wines.filter(wine => wine && wine.type && wine.type.toLowerCase() === 'white').length || 0,
+            rose: wines.filter(wine => wine && wine.type && wine.type.toLowerCase() === 'rosé').length || 0,
+            sparkling: wines.filter(wine => wine && wine.type && wine.type.toLowerCase() === 'sparkling').length || 0
+        };
+        
+        // Use a more reliable method to update Alpine data
+        updateAlpineData('collectionStats', stats);
+        updateAlpineData('loading', false);
+    } catch (error) {
+        console.error('Error loading collection stats:', error);
+        // Set default values on error
+        updateAlpineData('collectionStats', { total: 0, red: 0, white: 0, rose: 0, sparkling: 0 });
+        updateAlpineData('loading', false);
+        updateAlpineData('error', true);
+    }
+}
+
+// Helper function to update Alpine.js data that works with different Alpine versions
+function updateAlpineData(property, value) {
+    try {
+        const alpineElement = document.querySelector('[x-data]');
+        
+        // Try different methods to access Alpine data
+        if (window.Alpine && window.Alpine.store) {
+            // Alpine 3 with stores
+            window.Alpine.store('data')[property] = value;
+        } else if (alpineElement.__x) {
+            // Alpine 2.x
+            alpineElement.__x.$data[property] = value;
+        } else if (alpineElement._x_dataStack) {
+            // Alpine 3.x 
+            alpineElement._x_dataStack[0][property] = value;
+        } else if (window.Alpine && alpineElement.__alpine) {
+            // Alpine 3.x alternative 
+            alpineElement.__alpine.getUnobservedData()[property] = value;
+        } else {
+            // Direct property assignment - might work in some cases
+            alpineElement[property] = value;
+            console.warn('Used direct property assignment - Alpine.js data might not update correctly');
         }
+    } catch (error) {
+        console.error(`Failed to update Alpine.js data property '${property}':`, error);
+    }
+}
+
+// Helper function to handle empty collection state
+function handleEmptyCollection() {
+    const component = document.querySelector('[x-data]');
+    if (component && component.__x && component.__x.$data) {
+        component.__x.$data.collectionStats = {
+            total: 0,
+            red: 0,
+            white: 0,
+            rose: 0,
+            sparkling: 0
+        };
+        component.__x.$data.loading = false;
+    }
+}
         
         // Load recent wine additions
         async function loadRecentWines() {
