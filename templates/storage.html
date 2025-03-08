@@ -120,14 +120,38 @@
                         shelves: 5,
                         bottlesPerShelf: 6,
                         namingScheme: 'Section-Row-Column',
+                        zoneEnabled: false,
+                        zones: [
+                            { name: 'Default Zone', rows: 6, columns: 8, temperature: 55 }
+                        ],
+                        
+                        addZone() {
+                            this.zones.push({ 
+                                name: `Zone ${this.zones.length + 1}`, 
+                                rows: 4, 
+                                columns: 6, 
+                                temperature: 55 
+                            });
+                        },
+                        
+                        removeZone(index) {
+                            if (this.zones.length > 1) {
+                                this.zones.splice(index, 1);
+                            }
+                        },
                         
                         get totalPositions() {
-                            if (this.storageType === 'Wine Rack') {
-                                return this.rows * this.columns;
-                            } else if (this.storageType === 'Wine Fridge') {
-                                return this.sections * this.shelves * this.bottlesPerShelf;
+                            if (!this.zoneEnabled) {
+                                if (this.storageType === 'Wine Rack') {
+                                    return this.rows * this.columns;
+                                } else if (this.storageType === 'Wine Fridge') {
+                                    return this.sections * this.shelves * this.bottlesPerShelf;
+                                } else {
+                                    return this.sections * this.rows * this.columns;
+                                }
                             } else {
-                                return this.sections * this.rows * this.columns;
+                                // Calculate total positions from all zones
+                                return this.zones.reduce((total, zone) => total + (zone.rows * zone.columns), 0);
                             }
                         }
                     }">
@@ -152,8 +176,15 @@
                                 </select>
                             </div>
                             
-                            <!-- Dimensions section -->
-                            <div>
+                            <!-- Zone Configuration Toggle -->
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="zone-enabled" name="zoneEnabled" x-model="zoneEnabled"
+                                     class="rounded border-gray-300 text-wine-500 focus:ring-wine-500">
+                                <label for="zone-enabled" class="text-sm font-medium text-gray-700">Enable custom zones with different sizes and settings</label>
+                            </div>
+                            
+                            <!-- Standard Dimensions section (when zones are disabled) -->
+                            <div x-show="!zoneEnabled">
                                 <h3 class="text-base font-medium text-gray-700 mb-4">Storage Dimensions</h3>
                                 
                                 <!-- Wine Rack dimensions -->
@@ -207,10 +238,65 @@
                                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <!-- Zone Configuration (when zones are enabled) -->
+                            <div x-show="zoneEnabled" class="space-y-4">
+                                <h3 class="text-base font-medium text-gray-700 mb-4">Zone Configuration</h3>
                                 
-                                <div class="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
-                                    <p class="text-sm text-gray-700">Total positions: <span class="font-medium" x-text="totalPositions"></span></p>
-                                </div>
+                                <template x-for="(zone, index) in zones" :key="index">
+                                    <div class="p-4 border border-gray-200 rounded-md mb-4">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="font-medium" x-text="zone.name"></h4>
+                                            <button type="button" @click="removeZone(index)" 
+                                                    class="text-red-500 hover:text-red-700" 
+                                                    :disabled="zones.length === 1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div>
+                                                <label :for="'zone-name-'+index" class="block text-sm font-medium text-gray-700">Zone Name</label>
+                                                <input type="text" :id="'zone-name-'+index" :name="'zones['+index+'].name'" x-model="zone.name"
+                                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                            </div>
+                                            <div>
+                                                <label :for="'zone-rows-'+index" class="block text-sm font-medium text-gray-700">Rows</label>
+                                                <input type="number" :id="'zone-rows-'+index" :name="'zones['+index+'].rows'" x-model="zone.rows" min="1"
+                                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                            </div>
+                                            <div>
+                                                <label :for="'zone-columns-'+index" class="block text-sm font-medium text-gray-700">Columns</label>
+                                                <input type="number" :id="'zone-columns-'+index" :name="'zones['+index+'].columns'" x-model="zone.columns" min="1"
+                                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <label :for="'zone-temp-'+index" class="block text-sm font-medium text-gray-700">Temperature (°F)</label>
+                                            <input type="number" :id="'zone-temp-'+index" :name="'zones['+index+'].temperature'" x-model="zone.temperature" min="32" max="75"
+                                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                        </div>
+                                        
+                                        <div class="mt-2 p-2 bg-gray-50 rounded">
+                                            <p class="text-sm text-gray-600">Capacity: <span class="font-medium" x-text="zone.rows * zone.columns"></span> bottles</p>
+                                        </div>
+                                    </div>
+                                </template>
+                                
+                                <button type="button" @click="addZone" class="flex items-center text-wine-600 hover:text-wine-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                                    </svg>
+                                    Add Another Zone
+                                </button>
+                            </div>
+                            
+                            <div class="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                                <p class="text-sm text-gray-700">Total positions: <span class="font-medium" x-text="totalPositions"></span></p>
                             </div>
                             
                             <!-- Position naming scheme -->
@@ -221,6 +307,7 @@
                                     <option>Section-Row-Column</option>
                                     <option>Sequential Numbering</option>
                                     <option>Row-Column</option>
+                                    <option>Zone-Row-Column</option>
                                     <option>Custom</option>
                                 </select>
                             </div>
@@ -228,7 +315,9 @@
                             <!-- Storage layout preview -->
                             <div>
                                 <h3 class="text-base font-medium text-gray-700 mb-2">Storage Layout Preview</h3>
-                                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md overflow-x-auto">
+                                
+                                <!-- Standard layout preview (when zones are disabled) -->
+                                <div x-show="!zoneEnabled" class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md overflow-x-auto">
                                     <!-- Wine Rack preview -->
                                     <div x-show="storageType === 'Wine Rack'" class="grid" 
                                          :style="`grid-template-columns: repeat(${columns}, minmax(30px, 1fr)); gap: 4px;`">
@@ -283,6 +372,30 @@
                                         </template>
                                     </div>
                                 </div>
+                                
+                                <!-- Zones layout preview (when zones are enabled) -->
+                                <div x-show="zoneEnabled" class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md overflow-x-auto">
+                                    <template x-for="(zone, zIndex) in zones" :key="zIndex">
+                                        <div class="mb-6">
+                                            <div class="flex items-center mb-2">
+                                                <h4 class="text-sm font-medium" x-text="zone.name"></h4>
+                                                <span class="ml-2 px-2 py-0.5 bg-gray-200 rounded-full text-xs" x-text="`${zone.temperature}°F`"></span>
+                                            </div>
+                                            <div class="grid" :style="`grid-template-columns: repeat(${zone.columns}, minmax(30px, 1fr)); gap: 4px;`">
+                                                <template x-for="r in zone.rows" :key="r">
+                                                    <template x-for="c in zone.columns" :key="c">
+                                                        <div class="h-8 bg-wine-100 border border-wine-200 rounded flex items-center justify-center text-xs">
+                                                            <span x-text="namingScheme === 'Sequential Numbering' ? 
+                                                            calculateSequentialPosition(zIndex, r, c) : 
+                                                            (namingScheme === 'Zone-Row-Column' ? `${zIndex+1}-${r}-${c}` : 
+                                                            `${r}-${c}`)"></span>
+                                                        </div>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
                             
                             <div class="pt-4">
@@ -308,6 +421,24 @@
 
     <!-- JavaScript for API Integration -->
     <script>
+        // Helper function to calculate sequential position numbers for zones
+        function calculateSequentialPosition(zoneIndex, row, col) {
+            // We need to access the zones from Alpine.js context
+            const alpineContext = document.querySelector('[x-data]').__x.$data;
+            const zones = alpineContext.zones;
+            let position = 0;
+            
+            // Add positions from previous zones
+            for (let i = 0; i < zoneIndex; i++) {
+                position += zones[i].rows * zones[i].columns;
+            }
+            
+            // Add positions from current zone
+            position += (row - 1) * zones[zoneIndex].columns + col;
+            
+            return position;
+        }
+        
         // Fetch all storage configurations when page loads
         document.addEventListener('DOMContentLoaded', function() {
             fetchStorageConfigurations();
@@ -333,6 +464,11 @@
                 if (Array.isArray(data) && data.length > 0) {
                     // Display each storage configuration
                     data.forEach(storage => {
+                        // Check if storage has zones
+                        const hasZones = storage.dimensions && storage.dimensions.zones && storage.dimensions.zones.length > 0;
+                        const zoneInfo = hasZones ? 
+                            `<p class="text-sm text-gray-600 mt-1">${storage.dimensions.zones.length} zone${storage.dimensions.zones.length > 1 ? 's' : ''}</p>` : '';
+                        
                         storageListElement.innerHTML += `
                             <div class="bg-white rounded-lg shadow-md p-6">
                                 <div class="flex justify-between items-center">
@@ -342,8 +478,10 @@
                                 <div class="mt-2 text-sm text-gray-700">
                                     <p>Total positions: ${storage.total_positions}</p>
                                     <p>Naming scheme: ${storage.position_naming_scheme}</p>
+                                    ${zoneInfo}
                                 </div>
                                 <div class="mt-4 flex justify-end space-x-2">
+                                    <button onclick="viewStorage('${storage.id}')" class="px-3 py-1 bg-wine-500 text-white rounded hover:bg-wine-600 text-sm">View</button>
                                     <button onclick="editStorage('${storage.id}')" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">Edit</button>
                                     <button onclick="deleteStorage('${storage.id}')" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Delete</button>
                                 </div>
@@ -373,14 +511,58 @@
             const form = document.getElementById('storage-form');
             const formData = new FormData(form);
             
-            // Create an object to hold the form data
-            const storageData = {
+            // Access the Alpine.js context
+            const alpineContext = document.querySelector('[x-data]').__x.$data;
+            
+            // Create an object to hold the storage data
+            let storageData = {
                 name: formData.get('name'),
                 type: formData.get('type'),
-                total_positions: calculateTotalPositions(formData),
                 position_naming_scheme: formData.get('positionNamingScheme'),
-                dimensions: getDimensions(formData)
+                dimensions: {},
+                total_positions: 0
             };
+            
+            // Handle zones if enabled
+            if (alpineContext.zoneEnabled) {
+                storageData.dimensions.zones = alpineContext.zones.map(zone => ({
+                    name: zone.name,
+                    rows: parseInt(zone.rows),
+                    columns: parseInt(zone.columns),
+                    temperature: parseInt(zone.temperature)
+                }));
+                
+                // Calculate total positions from all zones
+                storageData.total_positions = storageData.dimensions.zones.reduce((total, zone) => 
+                    total + (zone.rows * zone.columns), 0);
+            } else {
+                // Handle standard dimensions based on storage type
+                if (alpineContext.storageType === 'Wine Rack') {
+                    storageData.dimensions = {
+                        rows: parseInt(alpineContext.rows),
+                        columns: parseInt(alpineContext.columns)
+                    };
+                    storageData.total_positions = storageData.dimensions.rows * storageData.dimensions.columns;
+                } else if (alpineContext.storageType === 'Wine Fridge') {
+                    storageData.dimensions = {
+                        sections: parseInt(alpineContext.sections),
+                        shelves: parseInt(alpineContext.shelves),
+                        bottles_per_shelf: parseInt(alpineContext.bottlesPerShelf)
+                    };
+                    storageData.total_positions = storageData.dimensions.sections * 
+                                                 storageData.dimensions.shelves * 
+                                                 storageData.dimensions.bottles_per_shelf;
+                } else {
+                    storageData.dimensions = {
+                        sections: parseInt(alpineContext.sections),
+                        rows: parseInt(alpineContext.rows),
+                        columns: parseInt(alpineContext.columns)
+                    };
+                    storageData.total_positions = storageData.dimensions.sections * 
+                                                 storageData.dimensions.rows * 
+                                                 storageData.dimensions.columns;
+                }
+            }
             
             try {
                 const response = await fetch('/api/storage', {
@@ -405,47 +587,284 @@
             }
         }
         
-        // Helper function to calculate total positions
-        function calculateTotalPositions(formData) {
-            const type = formData.get('type');
-            
-            if (type === 'Wine Rack') {
-                return parseInt(formData.get('rows')) * parseInt(formData.get('columns'));
-            } else if (type === 'Wine Fridge') {
-                return parseInt(formData.get('sections')) * parseInt(formData.get('shelves')) * parseInt(formData.get('bottlesPerShelf'));
-            } else {
-                return parseInt(formData.get('sections')) * parseInt(formData.get('rows')) * parseInt(formData.get('columns'));
+        // View storage configuration details
+        async function viewStorage(id) {
+            try {
+                const response = await fetch(`/api/storage/${id}`);
+                
+                if (response.ok) {
+                    const storage = await response.json();
+                    
+                    // Create modal to display storage details
+                    const modalHTML = `
+                        <div id="storage-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                                <div class="px-6 py-4 border-b">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="text-xl font-semibold text-gray-900">${storage.name}</h3>
+                                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4">
+                                    <div class="mb-4">
+                                        <span class="inline-block px-2 py-1 bg-gray-200 rounded-full text-sm">${storage.type}</span>
+                                        <p class="mt-2">Total positions: ${storage.total_positions}</p>
+                                        <p>Naming scheme: ${storage.position_naming_scheme}</p>
+                                    </div>
+                                    
+                                    <!-- Display zones if present -->
+                                    ${renderStorageDetails(storage)}
+                                </div>
+                                <div class="px-6 py-3 border-t flex justify-end">
+                                    <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add modal to body
+                    const modalContainer = document.createElement('div');
+                    modalContainer.innerHTML = modalHTML;
+                    document.body.appendChild(modalContainer);
+                    
+                    // Prevent scrolling on the body
+                    document.body.style.overflow = 'hidden';
+                    
+                } else {
+                    alert('Failed to load storage details');
+                }
+            } catch (error) {
+                console.error('Error viewing storage:', error);
+                alert('Failed to load storage details. Please try again.');
             }
         }
         
-        // Helper function to get dimensions object
-        function getDimensions(formData) {
-            const type = formData.get('type');
+        // Helper function to render storage details (zones or standard dimensions)
+        function renderStorageDetails(storage) {
+            // Check if storage has zones
+            const hasZones = storage.dimensions && storage.dimensions.zones && storage.dimensions.zones.length > 0;
             
-            if (type === 'Wine Rack') {
-                return {
-                    rows: parseInt(formData.get('rows')),
-                    columns: parseInt(formData.get('columns'))
-                };
-            } else if (type === 'Wine Fridge') {
-                return {
-                    sections: parseInt(formData.get('sections')),
-                    shelves: parseInt(formData.get('shelves')),
-                    bottles_per_shelf: parseInt(formData.get('bottlesPerShelf'))
-                };
+            if (hasZones) {
+                let zonesHTML = `
+                    <div class="mt-4">
+                        <h4 class="font-medium text-lg mb-2">Zones</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                `;
+                
+                storage.dimensions.zones.forEach(zone => {
+                    zonesHTML += `
+                        <div class="border border-gray-200 rounded-md p-3">
+                            <h5 class="font-medium">${zone.name}</h5>
+                            <p>Dimensions: ${zone.rows} rows × ${zone.columns} columns</p>
+                            <p>Capacity: ${zone.rows * zone.columns} bottles</p>
+                            ${zone.temperature ? `<p>Temperature: ${zone.temperature}°F</p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                zonesHTML += `
+                        </div>
+                    </div>
+                `;
+                
+                return zonesHTML;
             } else {
-                return {
-                    sections: parseInt(formData.get('sections')),
-                    rows: parseInt(formData.get('rows')),
-                    columns: parseInt(formData.get('columns'))
-                };
+                // Render standard dimensions based on storage type
+                let dimensionsHTML = `<div class="mt-4"><h4 class="font-medium text-lg mb-2">Dimensions</h4>`;
+                
+                if (storage.type === 'Wine Rack') {
+                    dimensionsHTML += `
+                        <p>Rows: ${storage.dimensions.rows}</p>
+                        <p>Columns: ${storage.dimensions.columns}</p>
+                    `;
+                } else if (storage.type === 'Wine Fridge') {
+                    dimensionsHTML += `
+                        <p>Sections: ${storage.dimensions.sections}</p>
+                        <p>Shelves per section: ${storage.dimensions.shelves}</p>
+                        <p>Bottles per shelf: ${storage.dimensions.bottles_per_shelf}</p>
+                    `;
+                } else {
+                    dimensionsHTML += `
+                        <p>Sections: ${storage.dimensions.sections}</p>
+                        <p>Rows: ${storage.dimensions.rows}</p>
+                        <p>Columns: ${storage.dimensions.columns}</p>
+                    `;
+                }
+                
+                dimensionsHTML += `</div>`;
+                return dimensionsHTML;
+            }
+        }
+        
+        // Close modal function
+        function closeModal() {
+            const modal = document.getElementById('storage-modal');
+            if (modal) {
+                modal.parentNode.removeChild(modal);
+                document.body.style.overflow = '';
             }
         }
         
         // Edit storage configuration
-        function editStorage(id) {
-            // In a real app, you would fetch the storage details by ID and populate the form
-            alert(`Edit storage with ID: ${id} - Functionality coming soon!`);
+        async function editStorage(id) {
+            try {
+                const response = await fetch(`/api/storage/${id}`);
+                
+                if (response.ok) {
+                    const storage = await response.json();
+                    
+                    // Get Alpine.js context
+                    const alpineContext = document.querySelector('[x-data]').__x.$data;
+                    
+                    // Fill form with storage data
+                    document.getElementById('storage-name').value = storage.name;
+                    alpineContext.storageType = storage.type;
+                    alpineContext.namingScheme = storage.position_naming_scheme;
+                    
+                    // Handle zones if present
+                    if (storage.dimensions && storage.dimensions.zones && storage.dimensions.zones.length > 0) {
+                        alpineContext.zoneEnabled = true;
+                        alpineContext.zones = storage.dimensions.zones.map(zone => ({
+                            name: zone.name,
+                            rows: zone.rows,
+                            columns: zone.columns,
+                            temperature: zone.temperature || 55
+                        }));
+                    } else {
+                        alpineContext.zoneEnabled = false;
+                        
+                        // Set dimensions based on storage type
+                        if (storage.type === 'Wine Rack') {
+                            alpineContext.rows = storage.dimensions.rows;
+                            alpineContext.columns = storage.dimensions.columns;
+                        } else if (storage.type === 'Wine Fridge') {
+                            alpineContext.sections = storage.dimensions.sections;
+                            alpineContext.shelves = storage.dimensions.shelves;
+                            alpineContext.bottlesPerShelf = storage.dimensions.bottles_per_shelf;
+                        } else {
+                            alpineContext.sections = storage.dimensions.sections || 1;
+                            alpineContext.rows = storage.dimensions.rows;
+                            alpineContext.columns = storage.dimensions.columns;
+                        }
+                    }
+                    
+                    // Modify form for updating
+                    const form = document.getElementById('storage-form');
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    submitButton.textContent = 'Update Storage Configuration';
+                    submitButton.dataset.storageId = storage.id;
+                    
+                    // Change form submission handler to update instead of create
+                    form.onsubmit = function(e) {
+                        e.preventDefault();
+                        updateStorageConfiguration(storage.id);
+                    };
+                    
+                    // Scroll to form
+                    document.querySelector('.mt-10.bg-white').scrollIntoView({ behavior: 'smooth' });
+                    
+                } else {
+                    alert('Failed to load storage details for editing');
+                }
+            } catch (error) {
+                console.error('Error editing storage:', error);
+                alert('Failed to load storage details for editing. Please try again.');
+            }
+        }
+        
+        // Update storage configuration
+        async function updateStorageConfiguration(id) {
+            // Access the Alpine.js context
+            const alpineContext = document.querySelector('[x-data]').__x.$data;
+            
+            // Create an object to hold the updated storage data
+            let storageData = {
+                name: document.getElementById('storage-name').value,
+                type: alpineContext.storageType,
+                position_naming_scheme: alpineContext.namingScheme,
+                dimensions: {},
+                total_positions: 0
+            };
+            
+            // Handle zones if enabled
+            if (alpineContext.zoneEnabled) {
+                storageData.dimensions.zones = alpineContext.zones.map(zone => ({
+                    name: zone.name,
+                    rows: parseInt(zone.rows),
+                    columns: parseInt(zone.columns),
+                    temperature: parseInt(zone.temperature)
+                }));
+                
+                // Calculate total positions from all zones
+                storageData.total_positions = storageData.dimensions.zones.reduce((total, zone) => 
+                    total + (zone.rows * zone.columns), 0);
+            } else {
+                // Handle standard dimensions based on storage type
+                if (alpineContext.storageType === 'Wine Rack') {
+                    storageData.dimensions = {
+                        rows: parseInt(alpineContext.rows),
+                        columns: parseInt(alpineContext.columns)
+                    };
+                    storageData.total_positions = storageData.dimensions.rows * storageData.dimensions.columns;
+                } else if (alpineContext.storageType === 'Wine Fridge') {
+                    storageData.dimensions = {
+                        sections: parseInt(alpineContext.sections),
+                        shelves: parseInt(alpineContext.shelves),
+                        bottles_per_shelf: parseInt(alpineContext.bottlesPerShelf)
+                    };
+                    storageData.total_positions = storageData.dimensions.sections * 
+                                                 storageData.dimensions.shelves * 
+                                                 storageData.dimensions.bottles_per_shelf;
+                } else {
+                    storageData.dimensions = {
+                        sections: parseInt(alpineContext.sections),
+                        rows: parseInt(alpineContext.rows),
+                        columns: parseInt(alpineContext.columns)
+                    };
+                    storageData.total_positions = storageData.dimensions.sections * 
+                                                 storageData.dimensions.rows * 
+                                                 storageData.dimensions.columns;
+                }
+            }
+            
+            try {
+                const response = await fetch(`/api/storage/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(storageData)
+                });
+                
+                if (response.ok) {
+                    alert('Storage configuration updated successfully!');
+                    
+                    // Reset form and event handler
+                    const form = document.getElementById('storage-form');
+                    form.reset();
+                    form.onsubmit = function(e) {
+                        e.preventDefault();
+                        saveStorageConfiguration();
+                    };
+                    
+                    // Reset button text
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    submitButton.textContent = 'Save Storage Configuration';
+                    delete submitButton.dataset.storageId;
+                    
+                    fetchStorageConfigurations(); // Refresh the list
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to update storage: ${errorData.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error updating storage configuration:', error);
+                alert('Failed to update storage configuration. Please try again.');
+            }
         }
         
         // Delete storage configuration
@@ -469,6 +888,11 @@
                 }
             }
         }
+        
+        // Add event listeners when DOM content is loaded
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
     </script>
-</body>
-</html>
