@@ -399,7 +399,7 @@
                             </div>
                             
                             <div class="pt-4">
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                <button type="button" onclick="saveStorageConfiguration()" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
                                     Save Storage Configuration
                                 </button>
                             </div>
@@ -423,22 +423,40 @@
     <script>
         // Helper function to calculate sequential position numbers for zones
         function calculateSequentialPosition(zoneIndex, row, col) {
-            // We need to access the zones from Alpine.js context
-            const alpineContext = document.querySelector('[x-data]').__x.$data;
-            const zones = alpineContext.zones;
-            let position = 0;
-            
-            // Add positions from previous zones
-            for (let i = 0; i < zoneIndex; i++) {
-                position += zones[i].rows * zones[i].columns;
-            }
-            
-            // Add positions from current zone
-            position += (row - 1) * zones[zoneIndex].columns + col;
-            
-            return position;
+    try {
+        // Try different methods to access Alpine data
+        let zones;
+        const alpineElement = document.querySelector('[x-data]');
+        
+        // Alpine.js v3.x
+        if (window.Alpine && alpineElement.__alpine) {
+            zones = alpineElement.__alpine.getUnobservedData().zones;
+        } 
+        // Fallback if we can't get data
+        else {
+            console.warn("Could not access Alpine.js zones data");
+            return (row - 1) * 10 + col; // Default calculation
         }
         
+        if (!zones) return (row - 1) * 10 + col; // Fallback
+        
+        let position = 0;
+        
+        // Add positions from previous zones
+        for (let i = 0; i < zoneIndex; i++) {
+            position += zones[i].rows * zones[i].columns;
+        }
+        
+        // Add positions from current zone
+        position += (row - 1) * zones[zoneIndex].columns + col;
+        
+        return position;
+    } catch (error) {
+        console.error("Error in calculateSequentialPosition:", error);
+        return (row - 1) * 10 + col; // Fallback
+    }
+}
+
         // Fetch all storage configurations when page loads
         document.addEventListener('DOMContentLoaded', function() {
             fetchStorageConfigurations();
@@ -507,198 +525,508 @@
         }
         
         // Save new storage configuration
-        async function saveStorageConfiguration() {
-            const form = document.getElementById('storage-form');
-            const formData = new FormData(form);
-            
-            // Access the Alpine.js context
-            const alpineContext = document.querySelector('[x-data]').__x.$data;
-            
-            // Create an object to hold the storage data
-            let storageData = {
-                name: formData.get('name'),
-                type: formData.get('type'),
-                position_naming_scheme: formData.get('positionNamingScheme'),
-                dimensions: {},
-                total_positions: 0
+
+// Helper function to safely get elements by their ID
+function getById(id) {
+    return document.getElementById(id);
+}
+
+// Function to get zone data directly from the DOM form instead of Alpine
+function getZonesFromDOM() {
+    // Check if zones are enabled
+    const zoneEnabled = getById('zone-enabled')?.checked || false;
+    
+    if (!zoneEnabled) {
+        // Return standard dimensions based on storage type
+        const storageType = getById('storage-type')?.value || 'Wine Rack';
+        const rows = parseInt(getById('rows')?.value || getById('other-rows')?.value || 1);
+        const columns = parseInt(getById('columns')?.value || getById('other-columns')?.value || 1);
+        const sections = parseInt(getById('sections')?.value || getById('other-sections')?.value || 1);
+        const shelves = parseInt(getById('shelves')?.value || 1);
+        const bottlesPerShelf = parseInt(getById('bottles-per-shelf')?.value || 1);
+        
+        let defaultZone;
+        if (storageType === 'Wine Rack') {
+            defaultZone = {
+                name: "Default Zone",
+                dimensions: { rows, columns }
             };
-            
-            // Handle zones if enabled
-            if (alpineContext.zoneEnabled) {
-                storageData.dimensions.zones = alpineContext.zones.map(zone => ({
-                    name: zone.name,
-                    rows: parseInt(zone.rows),
-                    columns: parseInt(zone.columns),
-                    temperature: parseInt(zone.temperature)
-                }));
-                
-                // Calculate total positions from all zones
-                storageData.total_positions = storageData.dimensions.zones.reduce((total, zone) => 
-                    total + (zone.rows * zone.columns), 0);
-            } else {
-                // Handle standard dimensions based on storage type
-                if (alpineContext.storageType === 'Wine Rack') {
-                    storageData.dimensions = {
-                        rows: parseInt(alpineContext.rows),
-                        columns: parseInt(alpineContext.columns)
-                    };
-                    storageData.total_positions = storageData.dimensions.rows * storageData.dimensions.columns;
-                } else if (alpineContext.storageType === 'Wine Fridge') {
-                    storageData.dimensions = {
-                        sections: parseInt(alpineContext.sections),
-                        shelves: parseInt(alpineContext.shelves),
-                        bottles_per_shelf: parseInt(alpineContext.bottlesPerShelf)
-                    };
-                    storageData.total_positions = storageData.dimensions.sections * 
-                                                 storageData.dimensions.shelves * 
-                                                 storageData.dimensions.bottles_per_shelf;
-                } else {
-                    storageData.dimensions = {
-                        sections: parseInt(alpineContext.sections),
-                        rows: parseInt(alpineContext.rows),
-                        columns: parseInt(alpineContext.columns)
-                    };
-                    storageData.total_positions = storageData.dimensions.sections * 
-                                                 storageData.dimensions.rows * 
-                                                 storageData.dimensions.columns;
-                }
-            }
-            
-            try {
-                const response = await fetch('/api/storage', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(storageData)
-                });
-                
-                if (response.ok) {
-                    alert('Storage configuration saved successfully!');
-                    form.reset();
-                    fetchStorageConfigurations(); // Refresh the list
-                } else {
-                    const errorData = await response.json();
-                    alert(`Failed to save storage: ${errorData.detail || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('Error saving storage configuration:', error);
-                alert('Failed to save storage configuration. Please try again.');
-            }
+        } else if (storageType === 'Wine Fridge') {
+            defaultZone = {
+                name: "Default Zone",
+                dimensions: { rows: shelves, columns: bottlesPerShelf, sections }
+            };
+        } else {
+            defaultZone = {
+                name: "Default Zone",
+                dimensions: { rows, columns, sections }
+            };
         }
+        
+        return [defaultZone];
+    }
+    
+    // Look for zone entries in the DOM
+    // We need to find all zone input groups in the form
+    const zoneContainers = document.querySelectorAll('[x-for="(zone, index) in zones"]');
+    console.log("Found zone containers:", zoneContainers.length);
+    
+    if (zoneContainers.length === 0) {
+        // Fallback to direct zone access
+        return collectZonesFromInputs();
+    }
+    
+    // Process each zone container
+    const zones = [];
+    zoneContainers.forEach((container, index) => {
+        // Find inputs within this container
+        const nameInput = container.querySelector('input[x-model="zone.name"]');
+        const rowsInput = container.querySelector('input[x-model="zone.rows"]');
+        const columnsInput = container.querySelector('input[x-model="zone.columns"]');
+        const temperatureInput = container.querySelector('input[x-model="zone.temperature"]');
+        
+        const name = nameInput?.value || `Zone ${index + 1}`;
+        const rows = parseInt(rowsInput?.value || 1);
+        const columns = parseInt(columnsInput?.value || 1);
+        const temperature = parseInt(temperatureInput?.value || 55);
+        
+        zones.push({
+            name,
+            dimensions: { rows, columns },
+            temperature
+        });
+    });
+    
+    // If we found no zones but the checkbox is enabled, create a default zone
+    if (zones.length === 0) {
+        zones.push({
+            name: "Default Zone",
+            dimensions: { rows: 1, columns: 1 },
+            temperature: 55
+        });
+    }
+    
+    return zones;
+}
+
+// Alternative approach that searches for all inputs with specific patterns
+function collectZonesFromInputs() {
+    const zones = [];
+    let zoneIndex = 0;
+    let foundAny = false;
+    
+    // Keep checking for zone inputs until we don't find any more
+    while (true) {
+        // Look for input fields that might belong to zones
+        const nameInput = document.querySelector(`input[name="zones[${zoneIndex}].name"]`) || 
+                         document.querySelector(`#zone-name-${zoneIndex}`);
+        
+        const rowsInput = document.querySelector(`input[name="zones[${zoneIndex}].rows"]`) || 
+                         document.querySelector(`#zone-rows-${zoneIndex}`);
+        
+        const columnsInput = document.querySelector(`input[name="zones[${zoneIndex}].columns"]`) || 
+                           document.querySelector(`#zone-columns-${zoneIndex}`);
+        
+        const temperatureInput = document.querySelector(`input[name="zones[${zoneIndex}].temperature"]`) || 
+                               document.querySelector(`#zone-temp-${zoneIndex}`);
+        
+        // If we can't find any inputs for this zone index, break the loop
+        if (!nameInput && !rowsInput && !columnsInput) {
+            // If we processed at least one zone, stop looking
+            if (foundAny || zoneIndex > 10) break;
+            
+            // Otherwise, try the next index (in case zone indexing doesn't start at 0)
+            zoneIndex++;
+            continue;
+        }
+        
+        foundAny = true;
+        
+        // Extract values with fallbacks
+        const name = nameInput?.value || `Zone ${zoneIndex + 1}`;
+        const rows = parseInt(rowsInput?.value || 1);
+        const columns = parseInt(columnsInput?.value || 1);
+        const temperature = parseInt(temperatureInput?.value || 55);
+        
+        zones.push({
+            name,
+            dimensions: { rows, columns },
+            temperature
+        });
+        
+        zoneIndex++;
+    }
+    
+    return zones;
+}
+
+// Replace your saveStorageConfiguration function with this version
+function saveStorageConfiguration() {
+    console.log("Save function called");
+    
+    try {
+        // Get basic form data
+        const storageName = getById('storage-name')?.value;
+        if (!storageName) {
+            alert('Please enter a storage name');
+            return;
+        }
+        
+        const storageType = getById('storage-type')?.value || 'Wine Rack';
+        const namingScheme = getById('naming-scheme')?.value || 'Section-Row-Column';
+        
+        // Get zones data directly from the DOM
+        const zones = getZonesFromDOM();
+        console.log("Collected zones:", zones);
+        
+        // Calculate total positions
+        const totalPositions = zones.reduce((total, zone) => {
+            const dims = zone.dimensions;
+            return total + (dims.rows * dims.columns * (dims.sections || 1));
+        }, 0);
+        
+        // Create storage data
+        const storageData = {
+            name: storageName,
+            type: storageType,
+            zones: zones,
+            position_naming_scheme: namingScheme,
+            total_positions: totalPositions
+        };
+        
+        console.log("Sending storage data:", JSON.stringify(storageData, null, 2));
+        
+        // Make the API call
+        fetch('/api/storage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(storageData)
+        })
+        .then(response => {
+            console.log("API response status:", response.status);
+            
+            // Handle the response
+            return response.text().then(text => {
+                console.log("API response text:", text);
+                
+                let jsonData = {};
+                try {
+                    // Try to parse as JSON if there is text
+                    if (text) {
+                        jsonData = JSON.parse(text);
+                    }
+                } catch (e) {
+                    console.warn("Response is not valid JSON:", e);
+                    jsonData = { rawText: text };
+                }
+                
+                // Handle based on status
+                if (response.ok) {
+                    console.log("Success response:", jsonData);
+                    alert('Storage configuration saved successfully!');
+                    document.getElementById('storage-form').reset();
+                    fetchStorageConfigurations();
+                } else {
+                    console.error("Error response:", jsonData);
+                    let errorMessage = 'Unknown error';
+                    
+                    // Handle FastAPI validation errors specifically (422)
+                    if (response.status === 422 && jsonData.detail) {
+                        // FastAPI validation errors usually have a detail array
+                        if (Array.isArray(jsonData.detail)) {
+                            const errors = jsonData.detail.map(err => {
+                                const location = err.loc.join('.');
+                                return `Field '${location}': ${err.msg}`;
+                            }).join('\n');
+                            errorMessage = `Validation errors:\n${errors}`;
+                        } else {
+                            errorMessage = jsonData.detail;
+                        }
+                    } else if (jsonData.detail) {
+                        errorMessage = jsonData.detail;
+                    } else if (jsonData.message) {
+                        errorMessage = jsonData.message;
+                    } else if (jsonData.error) {
+                        errorMessage = jsonData.error;
+                    } else if (text) {
+                        errorMessage = text;
+                    } else {
+                        errorMessage = `Server returned status ${response.status}`;
+                    }
+                    
+                    alert(`Failed to save storage: ${errorMessage}`);
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Network error:', error);
+            alert('Network error: ' + error.message);
+        });
+    } catch (error) {
+        console.error('Error in saveStorageConfiguration:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Helper function to get number inputs
+function getNumberInput(id, fallbackId) {
+    const element = document.getElementById(id);
+    if (element && element.value) {
+        return parseInt(element.value);
+    }
+    
+    if (fallbackId) {
+        const fallbackElement = document.getElementById(fallbackId);
+        if (fallbackElement && fallbackElement.value) {
+            return parseInt(fallbackElement.value);
+        }
+    }
+    
+    return 1; // Default value
+}
         
         // View storage configuration details
-        async function viewStorage(id) {
-            try {
-                const response = await fetch(`/api/storage/${id}`);
-                
-                if (response.ok) {
-                    const storage = await response.json();
-                    
-                    // Create modal to display storage details
-                    const modalHTML = `
-                        <div id="storage-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                                <div class="px-6 py-4 border-b">
-                                    <div class="flex justify-between items-center">
-                                        <h3 class="text-xl font-semibold text-gray-900">${storage.name}</h3>
-                                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
-                                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="px-6 py-4">
-                                    <div class="mb-4">
-                                        <span class="inline-block px-2 py-1 bg-gray-200 rounded-full text-sm">${storage.type}</span>
-                                        <p class="mt-2">Total positions: ${storage.total_positions}</p>
-                                        <p>Naming scheme: ${storage.position_naming_scheme}</p>
-                                    </div>
-                                    
-                                    <!-- Display zones if present -->
-                                    ${renderStorageDetails(storage)}
-                                </div>
-                                <div class="px-6 py-3 border-t flex justify-end">
-                                    <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Add modal to body
-                    const modalContainer = document.createElement('div');
-                    modalContainer.innerHTML = modalHTML;
-                    document.body.appendChild(modalContainer);
-                    
-                    // Prevent scrolling on the body
-                    document.body.style.overflow = 'hidden';
-                    
-                } else {
-                    alert('Failed to load storage details');
-                }
-            } catch (error) {
-                console.error('Error viewing storage:', error);
-                alert('Failed to load storage details. Please try again.');
-            }
-        }
-        
-        // Helper function to render storage details (zones or standard dimensions)
-        function renderStorageDetails(storage) {
-            // Check if storage has zones
-            const hasZones = storage.dimensions && storage.dimensions.zones && storage.dimensions.zones.length > 0;
-            
-            if (hasZones) {
-                let zonesHTML = `
-                    <div class="mt-4">
-                        <h4 class="font-medium text-lg mb-2">Zones</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                `;
-                
-                storage.dimensions.zones.forEach(zone => {
-                    zonesHTML += `
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <h5 class="font-medium">${zone.name}</h5>
-                            <p>Dimensions: ${zone.rows} rows × ${zone.columns} columns</p>
-                            <p>Capacity: ${zone.rows * zone.columns} bottles</p>
-                            ${zone.temperature ? `<p>Temperature: ${zone.temperature}°F</p>` : ''}
-                        </div>
-                    `;
-                });
-                
-                zonesHTML += `
+// Improved viewStorage function with better error handling
+async function viewStorage(id) {
+    console.log("Viewing storage with ID:", id);
+    
+    try {
+        // Show loading state
+        const loadingModal = `
+            <div id="storage-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="px-6 py-4 border-b">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-semibold text-gray-900">Loading Storage Details...</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                `;
-                
-                return zonesHTML;
-            } else {
-                // Render standard dimensions based on storage type
-                let dimensionsHTML = `<div class="mt-4"><h4 class="font-medium text-lg mb-2">Dimensions</h4>`;
-                
-                if (storage.type === 'Wine Rack') {
-                    dimensionsHTML += `
-                        <p>Rows: ${storage.dimensions.rows}</p>
-                        <p>Columns: ${storage.dimensions.columns}</p>
-                    `;
-                } else if (storage.type === 'Wine Fridge') {
-                    dimensionsHTML += `
-                        <p>Sections: ${storage.dimensions.sections}</p>
-                        <p>Shelves per section: ${storage.dimensions.shelves}</p>
-                        <p>Bottles per shelf: ${storage.dimensions.bottles_per_shelf}</p>
-                    `;
-                } else {
-                    dimensionsHTML += `
-                        <p>Sections: ${storage.dimensions.sections}</p>
-                        <p>Rows: ${storage.dimensions.rows}</p>
-                        <p>Columns: ${storage.dimensions.columns}</p>
-                    `;
+                    <div class="px-6 py-12 flex justify-center items-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-700"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add loading modal to body
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = loadingModal;
+        document.body.appendChild(modalContainer);
+        
+        // Prevent scrolling on the body
+        document.body.style.overflow = 'hidden';
+        
+        // Fetch storage details
+        console.log("Fetching storage details from:", `/api/storage/${id}`);
+        const response = await fetch(`/api/storage/${id}`);
+        console.log("Response status:", response.status);
+        
+        // Get the raw text first for debugging
+        const text = await response.text();
+        console.log("Raw response text:", text);
+        
+        // If response is not ok, show error
+        if (!response.ok) {
+            throw new Error(`Failed to fetch storage details (Status: ${response.status})`);
+        }
+        
+        // If response is empty, show error
+        if (!text.trim()) {
+            throw new Error("Empty response received");
+        }
+        
+        // Try to parse JSON
+        let storage;
+        try {
+            storage = JSON.parse(text);
+            console.log("Parsed storage details:", storage);
+        } catch (e) {
+            console.error("Failed to parse JSON:", e);
+            throw new Error("Invalid response format");
+        }
+        
+        // Replace loading modal with actual content
+        const modalHTML = `
+            <div id="storage-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="px-6 py-4 border-b">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-semibold text-gray-900">${storage.name}</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div class="mb-4">
+                            <span class="inline-block px-2 py-1 bg-gray-200 rounded-full text-sm">${storage.type}</span>
+                            <p class="mt-2">Total positions: ${storage.total_positions}</p>
+                            <p>Naming scheme: ${storage.position_naming_scheme}</p>
+                        </div>
+                        
+                        <!-- Display zones if present -->
+                        ${renderStorageDetails(storage)}
+                    </div>
+                    <div class="px-6 py-3 border-t flex justify-end">
+                        <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Update modal content
+        modalContainer.innerHTML = modalHTML;
+        
+    } catch (error) {
+        console.error('Error viewing storage:', error);
+        
+        // Show error in modal
+        const errorModal = `
+            <div id="storage-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full">
+                    <div class="px-6 py-4 border-b">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-semibold text-gray-900">Error</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-md">
+                            <p class="text-red-700">Failed to load storage details: ${error.message}</p>
+                        </div>
+                    </div>
+                    <div class="px-6 py-3 border-t flex justify-end">
+                        <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Replace any existing modal with error modal
+        const existingModal = document.getElementById('storage-modal');
+        if (existingModal) {
+            existingModal.outerHTML = errorModal;
+        } else {
+            const errorContainer = document.createElement('div');
+            errorContainer.innerHTML = errorModal;
+            document.body.appendChild(errorContainer);
+            document.body.style.overflow = 'hidden';
+        }
+    }
+}
+        
+        // Helper function to render storage details (zones or standard dimensions)
+function renderStorageDetails(storage) {
+    try {
+        console.log("Rendering storage details for:", storage);
+        
+        // Validate storage object
+        if (!storage) {
+            console.error("Storage object is undefined");
+            return `
+                <div class="mt-4 p-4 bg-red-50 rounded-md border border-red-200">
+                    <p class="text-red-700">No storage data available.</p>
+                </div>
+            `;
+        }
+        
+        // Check if storage has zones and it's a valid array
+        const hasZones = storage.zones && Array.isArray(storage.zones) && storage.zones.length > 0;
+        
+        if (hasZones) {
+            let zonesHTML = `
+                <div class="mt-4">
+                    <h4 class="font-medium text-lg mb-2">Zones</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            `;
+            
+            storage.zones.forEach((zone, index) => {
+                // Validate zone object
+                if (!zone) {
+                    console.warn(`Zone at index ${index} is undefined`);
+                    return; // Skip this iteration
                 }
                 
-                dimensionsHTML += `</div>`;
-                return dimensionsHTML;
-            }
+                console.log(`Rendering zone ${index}:`, zone);
+                
+                // Safe zone name
+                const zoneName = zone.name || `Zone ${index + 1}`;
+                
+                // Safely calculate dimensions
+                let dimensionsInfo = 'Dimensions unknown';
+                let capacity = 0;
+                
+                if (zone.dimensions) {
+                    const dims = zone.dimensions;
+                    let dimensionParts = [];
+                    
+                    // Safely access dimension properties
+                    const rows = dims.rows || 1;
+                    const columns = dims.columns || 1;
+                    const sections = dims.sections || 1;
+                    
+                    if (rows) dimensionParts.push(`${rows} rows`);
+                    if (columns) dimensionParts.push(`${columns} columns`);
+                    if (sections > 1) dimensionParts.push(`${sections} sections`);
+                    
+                    dimensionsInfo = dimensionParts.length > 0 
+                        ? dimensionParts.join(' × ') 
+                        : 'Dimensions unknown';
+                    
+                    // Calculate capacity safely
+                    capacity = rows * columns * sections;
+                }
+                
+                // Safe temperature
+                const temperatureInfo = (zone.temperature !== undefined && zone.temperature !== null) 
+                    ? `<p>Temperature: ${zone.temperature}°F</p>` 
+                    : '';
+                
+                zonesHTML += `
+                    <div class="border border-gray-200 rounded-md p-3">
+                        <h5 class="font-medium">${zoneName}</h5>
+                        <p>Dimensions: ${dimensionsInfo}</p>
+                        <p>Capacity: ${capacity} bottles</p>
+                        ${temperatureInfo}
+                    </div>
+                `;
+            });
+            
+            zonesHTML += `
+                    </div>
+                </div>
+            `;
+            
+            return zonesHTML;
+        } else {
+            // If no zones, display a message
+            return `
+                <div class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+                    <p class="text-gray-700">No zone information available for this storage.</p>
+                </div>
+            `;
         }
+    } catch (error) {
+        console.error("Error rendering storage details:", error);
+        return `
+            <div class="mt-4 p-4 bg-red-50 rounded-md border border-red-200">
+                <p class="text-red-700">Error displaying storage details: ${error.message}</p>
+            </div>
+        `;
+    }
+}
         
         // Close modal function
         function closeModal() {
@@ -709,48 +1037,169 @@
             }
         }
         
-        // Edit storage configuration
-        async function editStorage(id) {
-            try {
-                const response = await fetch(`/api/storage/${id}`);
-                
-                if (response.ok) {
-                    const storage = await response.json();
+ // Fixed editStorage function with direct DOM manipulation
+async function editStorage(id) {
+    console.log("Editing storage with ID:", id);
+    
+    try {
+        // Fetch storage details
+        const response = await fetch(`/api/storage/${id}`);
+        console.log("Response status:", response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch storage details (Status: ${response.status})`);
+        }
+        
+        // Parse response
+        const text = await response.text();
+        console.log("Raw response text:", text);
+        
+        if (!text.trim()) {
+            throw new Error("Empty response received");
+        }
+        
+        let storage;
+        try {
+            storage = JSON.parse(text);
+            console.log("Parsed storage details:", storage);
+        } catch (e) {
+            console.error("Failed to parse JSON:", e);
+            throw new Error("Invalid response format");
+        }
+        
+        // Fill in basic form fields
+        document.getElementById('storage-name').value = storage.name || '';
+        document.getElementById('storage-type').value = storage.type || 'Wine Rack';
+        document.getElementById('naming-scheme').value = storage.position_naming_scheme || 'Section-Row-Column';
+        
+        // Check if we have zones
+        const hasZones = storage.zones && Array.isArray(storage.zones) && storage.zones.length > 0;
+        const hasMultipleZones = hasZones && storage.zones.length > 1;
+        
+        // Handle zone toggle
+        const zoneCheckbox = document.getElementById('zone-enabled');
+        if (zoneCheckbox) {
+            zoneCheckbox.checked = hasMultipleZones;
+            // Trigger Alpine to show/hide the zone section
+            if (zoneCheckbox.dispatchEvent) {
+                zoneCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Try to use Alpine directly if possible
+        let setupZonesViaAlpine = false;
+        try {
+            const alpineElement = document.querySelector('[x-data]');
+            if (alpineElement) {
+                if (window.Alpine && alpineElement.__alpine) {
+                    console.log("Using __alpine API");
+                    const alpineData = alpineElement.__alpine.getUnobservedData();
+                    alpineData.zoneEnabled = hasMultipleZones;
                     
-                    // Get Alpine.js context
-                    const alpineContext = document.querySelector('[x-data]').__x.$data;
-                    
-                    // Fill form with storage data
-                    document.getElementById('storage-name').value = storage.name;
-                    alpineContext.storageType = storage.type;
-                    alpineContext.namingScheme = storage.position_naming_scheme;
-                    
-                    // Handle zones if present
-                    if (storage.dimensions && storage.dimensions.zones && storage.dimensions.zones.length > 0) {
-                        alpineContext.zoneEnabled = true;
-                        alpineContext.zones = storage.dimensions.zones.map(zone => ({
-                            name: zone.name,
-                            rows: zone.rows,
-                            columns: zone.columns,
+                    if (hasZones) {
+                        // Transform zones to match Alpine format
+                        alpineData.zones = storage.zones.map(zone => ({
+                            name: zone.name || 'Zone',
+                            rows: zone.dimensions?.rows || 1,
+                            columns: zone.dimensions?.columns || 1,
                             temperature: zone.temperature || 55
                         }));
-                    } else {
-                        alpineContext.zoneEnabled = false;
-                        
-                        // Set dimensions based on storage type
-                        if (storage.type === 'Wine Rack') {
-                            alpineContext.rows = storage.dimensions.rows;
-                            alpineContext.columns = storage.dimensions.columns;
-                        } else if (storage.type === 'Wine Fridge') {
-                            alpineContext.sections = storage.dimensions.sections;
-                            alpineContext.shelves = storage.dimensions.shelves;
-                            alpineContext.bottlesPerShelf = storage.dimensions.bottles_per_shelf;
-                        } else {
-                            alpineContext.sections = storage.dimensions.sections || 1;
-                            alpineContext.rows = storage.dimensions.rows;
-                            alpineContext.columns = storage.dimensions.columns;
-                        }
                     }
+                    
+                    setupZonesViaAlpine = true;
+                } 
+                else if (alpineElement._x_dataStack) {
+                    console.log("Using _x_dataStack API");
+                    const alpineData = alpineElement._x_dataStack[0];
+                    alpineData.zoneEnabled = hasMultipleZones;
+                    
+                    if (hasZones) {
+                        alpineData.zones = storage.zones.map(zone => ({
+                            name: zone.name || 'Zone',
+                            rows: zone.dimensions?.rows || 1,
+                            columns: zone.dimensions?.columns || 1,
+                            temperature: zone.temperature || 55
+                        }));
+                    }
+                    
+                    setupZonesViaAlpine = true;
+                }
+                else if (alpineElement.__x) {
+                    console.log("Using __x API");
+                    const alpineData = alpineElement.__x.$data;
+                    alpineData.zoneEnabled = hasMultipleZones;
+                    
+                    if (hasZones) {
+                        alpineData.zones = storage.zones.map(zone => ({
+                            name: zone.name || 'Zone',
+                            rows: zone.dimensions?.rows || 1,
+                            columns: zone.dimensions?.columns || 1,
+                            temperature: zone.temperature || 55
+                        }));
+                    }
+                    
+                    setupZonesViaAlpine = true;
+                }
+            }
+        } catch (e) {
+            console.warn("Could not set up zones via Alpine:", e);
+        }
+        
+        // If we couldn't set up zones via Alpine, fall back to standard dimensions
+        if (!setupZonesViaAlpine && !hasMultipleZones && hasZones) {
+            const standardZone = storage.zones[0];
+            const dimensions = standardZone.dimensions || {};
+            
+            // Set standard dimensions based on storage type
+            if (storage.type === 'Wine Rack') {
+                setInputValue('rows', dimensions.rows || 1);
+                setInputValue('columns', dimensions.columns || 1);
+            } else if (storage.type === 'Wine Fridge') {
+                setInputValue('sections', dimensions.sections || 1);
+                setInputValue('shelves', dimensions.rows || 1);
+                setInputValue('bottles-per-shelf', dimensions.columns || 1);
+            } else {
+                setInputValue('sections', dimensions.sections || 1);
+                setInputValue('other-rows', dimensions.rows || 1);
+                setInputValue('other-columns', dimensions.columns || 1);
+            }
+        }
+        
+        // Modify form for updating
+        const form = document.getElementById('storage-form');
+        const submitButton = form.querySelector('button[type="submit"]') || 
+                            form.querySelector('button[type="button"]');
+        
+        if (submitButton) {
+            submitButton.textContent = 'Update Storage Configuration';
+            submitButton.dataset.storageId = id;
+            
+            // Change click handler
+            submitButton.onclick = function(e) {
+                e.preventDefault();
+                updateStorageConfiguration(id);
+            };
+        }
+        
+        // Scroll to form
+        const formContainer = document.querySelector('.mt-10.bg-white');
+        if (formContainer) {
+            formContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+    } catch (error) {
+        console.error('Error editing storage:', error);
+        alert(`Error editing storage: ${error.message}`);
+    }
+}
+
+// Helper to safely set input values
+function setInputValue(id, value) {
+    const input = document.getElementById(id);
+    if (input) {
+        input.value = value;
+    }
+}
                     
                     // Modify form for updating
                     const form = document.getElementById('storage-form');
@@ -767,7 +1216,7 @@
                     // Scroll to form
                     document.querySelector('.mt-10.bg-white').scrollIntoView({ behavior: 'smooth' });
                     
-                } else {
+                } el se {
                     alert('Failed to load storage details for editing');
                 }
             } catch (error) {
@@ -776,96 +1225,123 @@
             }
         }
         
-        // Update storage configuration
-        async function updateStorageConfiguration(id) {
-            // Access the Alpine.js context
-            const alpineContext = document.querySelector('[x-data]').__x.$data;
-            
-            // Create an object to hold the updated storage data
-            let storageData = {
-                name: document.getElementById('storage-name').value,
-                type: alpineContext.storageType,
-                position_naming_scheme: alpineContext.namingScheme,
-                dimensions: {},
-                total_positions: 0
-            };
-            
-            // Handle zones if enabled
-            if (alpineContext.zoneEnabled) {
-                storageData.dimensions.zones = alpineContext.zones.map(zone => ({
-                    name: zone.name,
-                    rows: parseInt(zone.rows),
-                    columns: parseInt(zone.columns),
-                    temperature: parseInt(zone.temperature)
-                }));
-                
-                // Calculate total positions from all zones
-                storageData.total_positions = storageData.dimensions.zones.reduce((total, zone) => 
-                    total + (zone.rows * zone.columns), 0);
-            } else {
-                // Handle standard dimensions based on storage type
-                if (alpineContext.storageType === 'Wine Rack') {
-                    storageData.dimensions = {
-                        rows: parseInt(alpineContext.rows),
-                        columns: parseInt(alpineContext.columns)
-                    };
-                    storageData.total_positions = storageData.dimensions.rows * storageData.dimensions.columns;
-                } else if (alpineContext.storageType === 'Wine Fridge') {
-                    storageData.dimensions = {
-                        sections: parseInt(alpineContext.sections),
-                        shelves: parseInt(alpineContext.shelves),
-                        bottles_per_shelf: parseInt(alpineContext.bottlesPerShelf)
-                    };
-                    storageData.total_positions = storageData.dimensions.sections * 
-                                                 storageData.dimensions.shelves * 
-                                                 storageData.dimensions.bottles_per_shelf;
-                } else {
-                    storageData.dimensions = {
-                        sections: parseInt(alpineContext.sections),
-                        rows: parseInt(alpineContext.rows),
-                        columns: parseInt(alpineContext.columns)
-                    };
-                    storageData.total_positions = storageData.dimensions.sections * 
-                                                 storageData.dimensions.rows * 
-                                                 storageData.dimensions.columns;
-                }
-            }
-            
-            try {
-                const response = await fetch(`/api/storage/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(storageData)
-                });
-                
-                if (response.ok) {
-                    alert('Storage configuration updated successfully!');
-                    
-                    // Reset form and event handler
-                    const form = document.getElementById('storage-form');
-                    form.reset();
-                    form.onsubmit = function(e) {
-                        e.preventDefault();
-                        saveStorageConfiguration();
-                    };
-                    
-                    // Reset button text
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    submitButton.textContent = 'Save Storage Configuration';
-                    delete submitButton.dataset.storageId;
-                    
-                    fetchStorageConfigurations(); // Refresh the list
-                } else {
-                    const errorData = await response.json();
-                    alert(`Failed to update storage: ${errorData.detail || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('Error updating storage configuration:', error);
-                alert('Failed to update storage configuration. Please try again.');
-            }
+// Fixed updateStorageConfiguration function
+async function updateStorageConfiguration(id) {
+    console.log("Updating storage with ID:", id);
+    
+    try {
+        // Get basic form data
+        const storageName = document.getElementById('storage-name')?.value;
+        if (!storageName) {
+            alert('Please enter a storage name');
+            return;
         }
+        
+        const storageType = document.getElementById('storage-type')?.value || 'Wine Rack';
+        const namingScheme = document.getElementById('naming-scheme')?.value || 'Section-Row-Column';
+        
+        // Get zones data using the same helper function we use for saving
+        const zones = getZonesFromDOM();
+        console.log("Collected zones for update:", zones);
+        
+        // Calculate total positions
+        const totalPositions = zones.reduce((total, zone) => {
+            const dims = zone.dimensions;
+            return total + (dims.rows * dims.columns * (dims.sections || 1));
+        }, 0);
+        
+        // Create storage data
+        const storageData = {
+            name: storageName,
+            type: storageType,
+            zones: zones,
+            position_naming_scheme: namingScheme,
+            total_positions: totalPositions
+        };
+        
+        console.log("Sending updated storage data:", JSON.stringify(storageData, null, 2));
+        
+        // Make the API call
+        const response = await fetch(`/api/storage/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(storageData)
+        });
+        
+        console.log("API response status:", response.status);
+        
+        // Get the response text
+        const text = await response.text();
+        console.log("API response text:", text);
+        
+        // Try to parse as JSON
+        let jsonData = {};
+        try {
+            if (text) {
+                jsonData = JSON.parse(text);
+            }
+        } catch (e) {
+            console.warn("Response is not valid JSON:", e);
+        }
+        
+        // Handle based on status
+        if (response.ok) {
+            alert('Storage configuration updated successfully!');
+            
+            // Reset form and event handler
+            const form = document.getElementById('storage-form');
+            form.reset();
+            
+            // Reset button state
+            const submitButton = form.querySelector('button[type="submit"]') || 
+                              form.querySelector('button[type="button"]');
+            if (submitButton) {
+                submitButton.textContent = 'Save Storage Configuration';
+                delete submitButton.dataset.storageId;
+                submitButton.onclick = function(e) {
+                    e.preventDefault();
+                    saveStorageConfiguration();
+                };
+            }
+            
+            // Refresh storage list
+            fetchStorageConfigurations();
+        } else {
+            // Handle error
+            let errorMessage = 'Unknown error';
+            
+            // Handle FastAPI validation errors specifically (422)
+            if (response.status === 422 && jsonData.detail) {
+                if (Array.isArray(jsonData.detail)) {
+                    const errors = jsonData.detail.map(err => {
+                        const location = err.loc.join('.');
+                        return `Field '${location}': ${err.msg}`;
+                    }).join('\n');
+                    errorMessage = `Validation errors:\n${errors}`;
+                } else {
+                    errorMessage = jsonData.detail;
+                }
+            } else if (jsonData.detail) {
+                errorMessage = jsonData.detail;
+            } else if (jsonData.message) {
+                errorMessage = jsonData.message;
+            } else if (jsonData.error) {
+                errorMessage = jsonData.error;
+            } else if (text) {
+                errorMessage = text;
+            } else {
+                errorMessage = `Server returned status ${response.status}`;
+            }
+            
+            alert(`Failed to update storage: ${errorMessage}`);
+        }
+    } catch (error) {
+        console.error('Error updating storage configuration:', error);
+        alert(`Error updating storage: ${error.message}`);
+    }
+}
         
         // Delete storage configuration
         async function deleteStorage(id) {
@@ -895,4 +1371,98 @@
                 closeModal();
             }
         });
+        // Add this debug function to your code
+function debugZoneData() {
+    // Try different methods to access Alpine.js data
+    const alpineElement = document.querySelector('[x-data]');
+    let alpineData;
+    
+    try {
+        if (window.Alpine && alpineElement.__alpine) {
+            alpineData = alpineElement.__alpine.getUnobservedData();
+        } else if (alpineElement._x_dataStack) {
+            alpineData = alpineElement._x_dataStack[0];
+        } else if (alpineElement.__x) {
+            alpineData = alpineElement.__x.$data;
+        }
+    } catch (e) {
+        console.error("Error accessing Alpine data:", e);
+        return "Could not access Alpine data";
+    }
+    
+    if (!alpineData) {
+        return "No Alpine data found";
+    }
+    
+    const zoneEnabled = alpineData.zoneEnabled;
+    const zones = alpineData.zones;
+    
+    console.log("Zone enabled:", zoneEnabled);
+    console.log("Zones data:", zones);
+    
+    // Create a test object to see what would be sent to the server
+    const storageData = {
+        name: document.getElementById('storage-name').value,
+        type: alpineData.storageType,
+        position_naming_scheme: alpineData.namingScheme,
+        zones: []
+    };
+    
+    if (zoneEnabled && Array.isArray(zones)) {
+        storageData.zones = zones.map(zone => ({
+            name: zone.name,
+            dimensions: {
+                rows: parseInt(zone.rows) || 1,
+                columns: parseInt(zone.columns) || 1
+            },
+            temperature: parseInt(zone.temperature) || 55
+        }));
+    } else {
+        // Create a single default zone based on storage type
+        if (alpineData.storageType === 'Wine Rack') {
+            storageData.zones = [
+                {
+                    name: "Default Zone", 
+                    dimensions: { 
+                        rows: parseInt(alpineData.rows) || 1, 
+                        columns: parseInt(alpineData.columns) || 1 
+                    }
+                }
+            ];
+        } else if (alpineData.storageType === 'Wine Fridge') {
+            storageData.zones = [
+                {
+                    name: "Default Zone", 
+                    dimensions: {
+                        rows: parseInt(alpineData.shelves) || 1, 
+                        columns: parseInt(alpineData.bottlesPerShelf) || 1,
+                        sections: parseInt(alpineData.sections) || 1
+                    }
+                }
+            ];
+        } else {
+            storageData.zones = [
+                {
+                    name: "Default Zone", 
+                    dimensions: {
+                        rows: parseInt(alpineData.rows) || 1, 
+                        columns: parseInt(alpineData.columns) || 1, 
+                        sections: parseInt(alpineData.sections) || 1
+                    }
+                }
+            ];
+        }
+    }
+    
+    storageData.total_positions = storageData.zones.reduce((total, zone) => {
+        const dims = zone.dimensions;
+        return total + (dims.rows * dims.columns * (dims.sections || 1));
+    }, 0);
+    
+    console.log("Storage data that would be sent:", storageData);
+    return JSON.stringify(storageData, null, 2);
+}
+
+// To use this function, open the browser console and type:
+// debugZoneData()
     </script>
