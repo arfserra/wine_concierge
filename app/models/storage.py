@@ -10,9 +10,9 @@ class Storage(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)  # wine_fridge, cellar, rack
-    dimensions = Column(JSON, nullable=False)  # {"sections": 2, "rows": 6, "columns": 8}
+    zones = Column(JSON, nullable=False)  # [{"name": "Red Wine", "dimensions": {"rows": 6, "columns": 8}}, ...]
     total_positions = Column(Integer, nullable=False)
-    position_naming_scheme = Column(String, nullable=False)  # section-row-column
+    position_naming_scheme = Column(String, nullable=False)  # zone-row-column
     user_id = Column(String, nullable=False)
     
     # Relationship - one storage can have many wines

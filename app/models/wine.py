@@ -21,7 +21,7 @@ class Wine(Base):
     
     # Location information
     storage_id = Column(String, ForeignKey("storages.id"))
-    position = Column(String)
+    position = Column(String)  # Now in format like "Red Zone-A3" or "White Zone-B2"
     added_date = Column(DateTime, default=datetime.datetime.utcnow)
     
     # Rename metadata to wine_metadata to avoid conflict with SQLAlchemy's reserved name
