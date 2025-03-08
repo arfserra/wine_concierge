@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Collection - Wine Concierge</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wine: {
+                            50: '#FCF7F8',
+                            100: '#F5E6E8',
+                            200: '#E8C8CD',
+                            300: '#D9A5AD',
+                            400: '#C97F8C',
+                            500: '#B85A6A',
+                            600: '#A13D50',
+                            700: '#7E2D3D',
+                            800: '#5A202B',
+                            900: '#38141B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for minimal interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Mobile Navigation -->
+    <nav x-data="{ open: false }" class="bg-wine-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <!-- Logo and brand -->
+                <div class="flex items-center">
+                    <a href="/" class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L12 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11C8 11 8 15 12 15C16 15 16 11 16 11" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 17H15L14 21H10L9 17Z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.2"/>
+                        </svg>
+                        <span class="font-semibold text-xl tracking-tight">Wine Concierge</span>
+                    </a>
+                </div>
+                
+                <!-- Hamburger menu button -->
+                <div class="flex items-center sm:hidden">
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-wine-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Home</a>
+                        <a href="/collection.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 bg-wine-600">My Collection</a>
+                        <a href="/storage.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Storage Setup</a>
+                        <a href="/add-wine.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Add Wine</a>
+                        <a href="/pairing.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Pairing</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Home</a>
+                <a href="/collection.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 bg-wine-600">My Collection</a>
+                <a href="/storage.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Storage Setup</a>
+                <a href="/add-wine.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Add Wine</a>
+                <a href="/pairing.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Pairing</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                    <h1 class="text-2xl font-semibold text-gray-900">My Wine Collection</h1>
+                    
+                    <div class="mt-3 sm:mt-0 flex flex-wrap gap-2">
+                        <a href="/add-wine.html" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                            <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            Add Wine
+                        </a>
+                        
+                        <div class="relative">
+                            <input id="search-wine" type="text" placeholder="Search wines..." class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-wine-500 focus:border-wine-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div x-data="{ showFilters: false }" class="mb-6">
+                    <button @click="showFilters = !showFilters" class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                        <svg class="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                        </svg>
+                        Filters
+                        <span x-show="showFilters" class="ml-1">
+                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        <span x-show="!showFilters" class="ml-1">
+                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    </button>
+                    
+                    <div x-show="showFilters" x-transition class="mt-3 bg-white shadow-sm rounded-md p-4 border border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="filter-type" class="block text-sm font-medium text-gray-700 mb-1">Wine Type</label>
+                                <select id="filter-type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option value="">All Types</option>
+                                    <option value="Red">Red</option>
+                                    <option value="White">White</option>
+                                    <option value="Rosé">Rosé</option>
+                                    <option value="Sparkling">Sparkling</option>
+                                    <option value="Dessert">Dessert</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="filter-country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                                <select id="filter-country" class="w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option value="">All Countries</option>
+                                    <!-- Countries will be populated dynamically -->
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="filter-region" class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                                <select id="filter-region" class="w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option value="">All Regions</option>
+                                    <!-- Regions will be populated dynamically -->
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="filter-storage" class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
+                                <select id="filter-storage" class="w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option value="">All Storages</option>
+                                    <!-- Storages will be populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-end">
+                            <button id="reset-filters" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500 mr-2">
+                                Reset
+                            </button>
+                            <button id="apply-filters" class="px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Wine Grid -->
+                <div id="wine-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Loading placeholders -->
+                    <div class="animate-pulse bg-white shadow-md rounded-lg overflow-hidden">
+                        <div class="h-48 bg-gray-200"></div>
+                        <div class="p-4">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/2"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-2/3"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/3"></div>
+                            <div class="mt-4 flex justify-between">
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="animate-pulse bg-white shadow-md rounded-lg overflow-hidden">
+                        <div class="h-48 bg-gray-200"></div>
+                        <div class="p-4">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/2"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-2/3"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/3"></div>
+                            <div class="mt-4 flex justify-between">
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty state -->
+                <div id="empty-state" class="hidden py-12 text-center bg-white shadow-sm rounded-md mt-6">
+                    <svg class="w-16 h-16 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 3L12 15M8 11C8 11 8 15 12 15C16 15 16 11 16 11M9 17H15L14 21H10L9 17Z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No wines found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Get started by adding your first wine to your collection.</p>
+                    <div class="mt-6">
+                        <a href="/add-wine.html" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                            <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            Add Wine
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Wine Detail Modal -->
+    <div x-data="{ open: false, wineDetail: {} }" @show-wine-detail.window="open = true; wineDetail = $event.detail.wine" class="relative z-10" x-show="open" x-cloak>
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                    <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-xl font-semibold leading-6 text-gray-900" x-text="wineDetail.name"></h3>
+                                
+                                <div class="mt-4 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <img x-bind:src="wineDetail.label_image_url ? '/uploads/' + wineDetail.label_image_url : '/static/images/default-wine.jpg'" class="w-full h-auto rounded-md" alt="Wine Label">
+                                    </div>
+                                    <div>
+                                        <p class="mb-1"><span class="font-medium">Producer:</span> <span x-text="wineDetail.producer || 'Unknown'"></span></p>
+                                        <p class="mb-1"><span class="font-medium">Vintage:</span> <span x-text="wineDetail.vintage || 'Unknown'"></span></p>
+                                        <p class="mb-1"><span class="font-medium">Type:</span> <span x-text="wineDetail.type || 'Unknown'"></span></p>
+                                        <p class="mb-1"><span class="font-medium">Varietal:</span> <span x-text="wineDetail.varietal ? wineDetail.varietal.join(', ') : 'Unknown'"></span></p>
+                                        <p class="mb-1"><span class="font-medium">Region:</span> <span x-text="wineDetail.region || 'Unknown'"></span></p>
+                                        <p class="mb-1"><span class="font-medium">Country:</span> <span x-text="wineDetail.country || 'Unknown'"></span></p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 p-3 bg-gray-50 rounded-md">
+                                    <p class="text-sm"><span class="font-medium">Storage Location:</span> <span x-text="wineDetail.storage_name || 'Unknown'"></span> (<span x-text="wineDetail.position || 'Unknown position'"></span>)</p>
+                                    <p class="text-sm"><span class="font-medium">Added on:</span> <span x-text="new Date(wineDetail.added_date).toLocaleDateString()"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button @click="open = false" type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2025 Wine Concierge. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for API Integration -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchWines();
+            setupFilters();
+            
+            // Setup search functionality
+            document.getElementById('search-wine').addEventListener('input', debounce(function(e) {
+                const searchTerm = e.target.value.trim().toLowerCase();
+                filterWines();
+            }, 300));
+            
+            // Setup filter functionality
+            document.getElementById('apply-filters').addEventListener('click', function() {
+                filterWines();
+            });
+            
+            document.getElementById('reset-filters').addEventListener('click', function() {
+                document.getElementById('filter-type').value = '';
+                document.getElementById('filter-country').value = '';
+                document.getElementById('filter-region').value = '';
+                document.getElementById('filter-storage').value = '';
+                document.getElementById('search-wine').value = '';
+                filterWines();
+            });
+        });
+        
+        // Fetch all wines
+        async function fetchWines() {
+            try {
+                const response = await fetch('/api/wines');
+                const data = await response.json();
+                
+                // Store wines globally for filtering
+                window.allWines = data;
+                
+                renderWines(data);
+                populateFilterOptions(data);
+            } catch (error) {
+                console.error('Error fetching wines:', error);
+                document.getElementById('wine-grid').innerHTML = `
+                    <div class="col-span-full p-6 bg-red-50 rounded-lg border border-red-200 text-center">
+                        <p class="text-red-500">Failed to load wine collection. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Render wines to the grid
+        function renderWines(wines) {
+            const wineGridElement = document.getElementById('wine-grid');
+            const emptyStateElement = document.getElementById('empty-state');
+            
+            // Clear loading placeholders
+            wineGridElement.innerHTML = '';
+            
+            if (wines.length === 0) {
+                // Show empty state if no wines
+                emptyStateElement.classList.remove('hidden');
+                wineGridElement.classList.add('hidden');
+            } else {
+                // Hide empty state and display wines
+                emptyStateElement.classList.add('hidden');
+                wineGridElement.classList.remove('hidden');
+                
+                // Display each wine
+                wines.forEach(wine => {
+                    wineGridElement.innerHTML += `
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                            <div class="h-48 bg-gray-100 relative">
+                                <img src="${wine.label_image_url ? '/uploads/' + wine.label_image_url : '/static/images/default-wine.jpg'}" 
+                                     class="w-full h-full object-cover" alt="Wine Label">
+                                <div class="absolute top-2 right-2 px-2 py-1 bg-wine-700 text-white text-xs font-bold rounded">
+                                    ${wine.type || 'Unknown'}
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-bold text-lg truncate">${wine.name}</h3>
+                                <p class="text-gray-700 text-sm">${wine.producer || 'Unknown producer'}</p>
+                                <p class="text-gray-600 text-sm">${wine.vintage ? 'Vintage: ' + wine.vintage : ''}</p>
+                                <p class="text-gray-600 text-sm truncate">${wine.region ? wine.region + ', ' : ''}${wine.country || ''}</p>
+                                
+                                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">
+                                        <span class="font-medium">Location:</span> ${wine.position || 'Unknown'}
+                                    </span>
+                                    <button onclick="showWineDetail('${wine.id}')" class="px-3 py-1 bg-wine-600 text-white rounded hover:bg-wine-700 text-sm">
+                                        Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+        
+        // Filter wines based on selected filters and search term
+        function filterWines() {
+            if (!window.allWines) return;
+            
+            const typeFilter = document.getElementById('filter-type').value.toLowerCase();
+            const countryFilter = document.getElementById('filter-country').value.toLowerCase();
+            const regionFilter = document.getElementById('filter-region').value.toLowerCase();
+            const storageFilter = document.getElementById('filter-storage').value;
+            const searchTerm = document.getElementById('search-wine').value.trim().toLowerCase();
+            
+            const filteredWines = window.allWines.filter(wine => {
+                // Apply search term filter
+                if (searchTerm && !wineMatchesSearch(wine, searchTerm)) {
+                    return false;
+                }
+                
+                // Apply type filter
+                if (typeFilter && wine.type && wine.type.toLowerCase() !== typeFilter) {
+                    return false;
+                }
+                
+                // Apply country filter
+                if (countryFilter && wine.country && wine.country.toLowerCase() !== countryFilter) {
+                    return false;
+                }
+                
+                // Apply region filter
+                if (regionFilter && wine.region && wine.region.toLowerCase() !== regionFilter) {
+                    return false;
+                }
+                
+                // Apply storage filter
+                if (storageFilter && wine.storage_id !== storageFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            renderWines(filteredWines);
+        }
+        
+        // Check if wine matches search term
+        function wineMatchesSearch(wine, searchTerm) {
+            // Search in name, producer, region, country, etc.
+            return (
+                (wine.name && wine.name.toLowerCase().includes(searchTerm)) ||
+                (wine.producer && wine.producer.toLowerCase().includes(searchTerm)) ||
+                (wine.region && wine.region.toLowerCase().includes(searchTerm)) ||
+                (wine.country && wine.country.toLowerCase().includes(searchTerm)) ||
+                (wine.varietal && wine.varietal.some(v => v.toLowerCase().includes(searchTerm)))
+            );
+        }
+        
+        // Set up filter dropdowns
+        function setupFilters() {
+            // Fetch storage options for filter
+            fetch('/api/storage')
+                .then(response => response.json())
+                .then(storages => {
+                    const storageSelect = document.getElementById('filter-storage');
+                    storages.forEach(storage => {
+                        const option = document.createElement('option');
+                        option.value = storage.id;
+                        option.textContent = storage.name;
+                        storageSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error fetching storage options:', error));
+        }
+        
+        // Populate filter options based on available wines
+        function populateFilterOptions(wines) {
+            const countries = new Set();
+            const regions = new Set();
+            
+            wines.forEach(wine => {
+                if (wine.country) countries.add(wine.country);
+                if (wine.region) regions.add(wine.region);
+            });
+            
+            const countrySelect = document.getElementById('filter-country');
+            const regionSelect = document.getElementById('filter-region');
+            
+            // Clear existing options except the first one
+            countrySelect.innerHTML = '<option value="">All Countries</option>';
+            regionSelect.innerHTML = '<option value="">All Regions</option>';
+            
+            // Add country options
+            Array.from(countries).sort().forEach(country => {
+                const option = document.createElement('option');
+                option.value = country.toLowerCase();
+                option.textContent = country;
+                countrySelect.appendChild(option);
+            });
+            
+            // Add region options
+            Array.from(regions).sort().forEach(region => {
+                const option = document.createElement('option');
+                option.value = region.toLowerCase();
+                option.textContent = region;
+                regionSelect.appendChild(option);
+            });
+        }
+        
+        // Show wine detail modal
+        function showWineDetail(wineId) {
+            if (!window.allWines) return;
+            
+            const wine = window.allWines.find(w => w.id === wineId);
+            if (wine) {
+                // Find the storage name if available
+                fetch(`/api/storage/${wine.storage_id}`)
+                    .then(response => response.json())
+                    .then(storage => {
+                        wine.storage_name = storage.name;
+                        // Dispatch custom event to show modal with wine details
+                        window.dispatchEvent(new CustomEvent('show-wine-detail', {
+                            detail: { wine }
+                        }));
+                    })
+                    .catch(() => {
+                        wine.storage_name = 'Unknown storage';
+                        window.dispatchEvent(new CustomEvent('show-wine-detail', {
+                            detail: { wine }
+                        }));
+                    });
+            }
+        }
+        
+        // Utility function for debouncing
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>

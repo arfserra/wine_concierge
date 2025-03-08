@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wine Concierge - Manage Your Wine Collection</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wine: {
+                            50: '#FCF7F8',
+                            100: '#F5E6E8',
+                            200: '#E8C8CD',
+                            300: '#D9A5AD',
+                            400: '#C97F8C',
+                            500: '#B85A6A',
+                            600: '#A13D50',
+                            700: '#7E2D3D',
+                            800: '#5A202B',
+                            900: '#38141B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for minimal interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Mobile Navigation -->
+    <nav x-data="{ open: false }" class="bg-wine-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <!-- Logo and brand -->
+                <div class="flex items-center">
+                    <a href="/" class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L12 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11C8 11 8 15 12 15C16 15 16 11 16 11" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 17H15L14 21H10L9 17Z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.2"/>
+                        </svg>
+                        <span class="font-semibold text-xl tracking-tight">Carlos</span>
+                    </a>
+                </div>
+                
+                <!-- Hamburger menu button -->
+                <div class="flex items-center sm:hidden">
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-wine-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 bg-wine-600">Home</a>
+                        <a href="/collection.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">My Collection</a>
+                        <a href="/storage.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Storage Setup</a>
+                        <a href="/add-wine.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Add Wine</a>
+                        <a href="/pairing.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Pairing</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 bg-wine-600">Home</a>
+                <a href="/collection.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">My Collection</a>
+                <a href="/storage.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Storage Setup</a>
+                <a href="/add-wine.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Add Wine</a>
+                <a href="/pairing.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Pairing</a>
+            </div>
+        </div>
+    </nav>
+ 
+    <!-- Quick Access Section -->
+    <div class="bg-wine-50 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <div x-data="{ 
+                collectionStats: { total: 0, red: 0, white: 0, rose: 0, sparkling: 0 },
+                loading: true,
+                error: false 
+            }" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- Collection Stats Card -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-wine-100 rounded-md p-3">
+                                <svg class="h-6 w-6 text-wine-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">
+                                        My Collection
+                                    </dt>
+                                    <dd x-show="loading" class="animate-pulse h-5 bg-gray-200 rounded w-12 mt-1"></dd>
+                                    <dd x-show="!loading && !error">
+                                        <div class="text-lg font-medium text-gray-900" x-text="collectionStats.total + ' Wines'"></div>
+                                        <div class="mt-1 text-sm text-gray-500">
+                                            <span x-text="collectionStats.red"></span> Red · 
+                                            <span x-text="collectionStats.white"></span> White · 
+                                            <span x-text="collectionStats.rose"></span> Rosé · 
+                                            <span x-text="collectionStats.sparkling"></span> Sparkling
+                                        </div>
+                                    </dd>
+                                    <dd x-show="error" class="text-sm text-red-500">
+                                        Error loading collection stats
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                        <div class="text-sm">
+                            <a href="/collection.html" class="font-medium text-wine-600 hover:text-wine-500">
+                                View collection
+                                <span aria-hidden="true"> &rarr;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Additions Preview -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-3">Recent Additions</h3>
+                        <div id="recent-wines" class="space-y-3">
+                            <!-- Loading state -->
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded mb-1 w-1/2"></div>
+                                <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded mb-1 w-1/2"></div>
+                                <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                        <div class="text-sm">
+                            <a href="/add-wine.html" class="font-medium text-wine-600 hover:text-wine-500">
+                                Add a new wine
+                                <span aria-hidden="true"> &rarr;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Pairing Card -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-3">Quick Pairing</h3>
+                        <form id="quick-pairing-form" class="space-y-4">
+                            <div>
+                                <label for="quick-food" class="block text-sm font-medium text-gray-700">What are you eating?</label>
+                                <input type="text" id="quick-food" name="quick-food" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" placeholder="e.g., Grilled salmon">
+                            </div>
+                            <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                Get Pairing
+                            </button>
+                        </form>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                        <div class="text-sm">
+                            <a href="/pairing.html" class="font-medium text-wine-600 hover:text-wine-500">
+                                All pairing options
+                                <span aria-hidden="true"> &rarr;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200">
+                <div class="mt-8 md:mt-0">
+                    <p class="text-center text-gray-500 text-sm">
+                        &copy; 2025 Wine Concierge. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript for API Integration -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load collection stats
+            loadCollectionStats();
+            
+            // Load recent wines
+            loadRecentWines();
+            
+            // Set up quick pairing form
+            document.getElementById('quick-pairing-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const foodDescription = document.getElementById('quick-food').value.trim();
+                if (foodDescription) {
+                    window.location.href = `/pairing.html?food=${encodeURIComponent(foodDescription)}`;
+                }
+            });
+        });
+        
+        // Load collection statistics
+        async function loadCollectionStats() {
+            try {
+                const response = await fetch('/api/wines');
+                const wines = await response.json();
+                
+                // Calculate statistics
+                const stats = {
+                    total: wines.length,
+                    red: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'red').length,
+                    white: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'white').length,
+                    rose: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'rosé').length,
+                    sparkling: wines.filter(wine => wine.type && wine.type.toLowerCase() === 'sparkling').length
+                };
+                
+                // Update the stats in Alpine.js component
+                const component = document.querySelector('[x-data]').__x.$data;
+                component.collectionStats = stats;
+                component.loading = false;
+            } catch (error) {
+                console.error('Error loading collection stats:', error);
+                const component = document.querySelector('[x-data]').__x.$data;
+                component.loading = false;
+                component.error = true;
+            }
+        }
+        
+        // Load recent wine additions
+        async function loadRecentWines() {
+            try {
+                const response = await fetch('/api/wines');
+                const wines = await response.json();
+                
+                // Sort by added date (most recent first)
+                wines.sort((a, b) => new Date(b.added_date) - new Date(a.added_date));
+                
+                // Get the most recent 3 wines
+                const recentWines = wines.slice(0, 3);
+                
+                // Update the DOM
+                const recentWinesContainer = document.getElementById('recent-wines');
+                
+                if (recentWines.length === 0) {
+                    recentWinesContainer.innerHTML = `
+                        <div class="text-center py-3">
+                            <p class="text-sm text-gray-500">No wines in your collection yet.</p>
+                            <a href="/add-wine.html" class="mt-2 inline-block text-sm font-medium text-wine-600 hover:text-wine-500">
+                                Add your first wine
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    recentWinesContainer.innerHTML = recentWines.map(wine => `
+                        <div class="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                            <h4 class="font-medium text-gray-900">${wine.name}</h4>
+                            <p class="text-sm text-gray-500">${wine.producer || ''} ${wine.vintage ? '(' + wine.vintage + ')' : ''}</p>
+                            <p class="text-xs text-gray-400">Added on ${new Date(wine.added_date).toLocaleDateString()}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading recent wines:', error);
+                document.getElementById('recent-wines').innerHTML = `
+                    <div class="text-center py-3">
+                        <p class="text-sm text-red-500">Failed to load recent wines.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

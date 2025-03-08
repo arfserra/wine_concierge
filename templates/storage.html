@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Setup - Wine Concierge</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wine: {
+                            50: '#FCF7F8',
+                            100: '#F5E6E8',
+                            200: '#E8C8CD',
+                            300: '#D9A5AD',
+                            400: '#C97F8C',
+                            500: '#B85A6A',
+                            600: '#A13D50',
+                            700: '#7E2D3D',
+                            800: '#5A202B',
+                            900: '#38141B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for minimal interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Mobile Navigation -->
+    <nav x-data="{ open: false }" class="bg-wine-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <!-- Logo and brand -->
+                <div class="flex items-center">
+                    <a href="/" class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L12 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11C8 11 8 15 12 15C16 15 16 11 16 11" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 17H15L14 21H10L9 17Z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.2"/>
+                        </svg>
+                        <span class="font-semibold text-xl tracking-tight">Wine Concierge</span>
+                    </a>
+                </div>
+                
+                <!-- Hamburger menu button -->
+                <div class="flex items-center sm:hidden">
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-wine-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Home</a>
+                        <a href="/collection.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">My Collection</a>
+                        <a href="/storage.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 bg-wine-600">Storage Setup</a>
+                        <a href="/add-wine.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Add Wine</a>
+                        <a href="/pairing.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Pairing</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Home</a>
+                <a href="/collection.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">My Collection</a>
+                <a href="/storage.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 bg-wine-600">Storage Setup</a>
+                <a href="/add-wine.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Add Wine</a>
+                <a href="/pairing.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Pairing</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <h1 class="text-2xl font-semibold text-gray-900">Storage Setup</h1>
+                
+                <!-- Existing Storage Configurations -->
+                <div id="existing-storage-container" class="mt-8">
+                    <h2 class="text-xl font-medium text-gray-800 mb-4">Your Storage Units</h2>
+                    <div id="storage-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Storage items will be added here dynamically -->
+                        <div class="animate-pulse bg-white rounded-lg shadow-md p-6">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/2"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-1/3"></div>
+                            <div class="h-3 bg-gray-200 rounded mb-2 w-2/3"></div>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                                <div class="h-8 bg-gray-200 rounded w-16"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Add New Storage Form -->
+                <div class="mt-10 bg-white shadow-md rounded-lg p-6">
+                    <h2 class="text-xl font-medium text-gray-800 mb-6">Add New Storage</h2>
+                    
+                    <div x-data="{
+                        storageType: 'Wine Fridge',
+                        sections: 2,
+                        rows: 6,
+                        columns: 8,
+                        shelves: 5,
+                        bottlesPerShelf: 6,
+                        namingScheme: 'Section-Row-Column',
+                        
+                        get totalPositions() {
+                            if (this.storageType === 'Wine Rack') {
+                                return this.rows * this.columns;
+                            } else if (this.storageType === 'Wine Fridge') {
+                                return this.sections * this.shelves * this.bottlesPerShelf;
+                            } else {
+                                return this.sections * this.rows * this.columns;
+                            }
+                        }
+                    }">
+                        <form id="storage-form" class="space-y-6">
+                            <!-- Basic Info -->
+                            <div>
+                                <label for="storage-name" class="block text-sm font-medium text-gray-700">Storage Name</label>
+                                <input type="text" id="storage-name" name="name" placeholder="Master Bedroom Wine Fridge" 
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                                       required>
+                            </div>
+                            
+                            <div>
+                                <label for="storage-type" class="block text-sm font-medium text-gray-700">Storage Type</label>
+                                <select id="storage-type" name="type" x-model="storageType"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option>Wine Fridge</option>
+                                    <option>Wine Cellar</option>
+                                    <option>Wine Rack</option>
+                                    <option>Wine Cabinet</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Dimensions section -->
+                            <div>
+                                <h3 class="text-base font-medium text-gray-700 mb-4">Storage Dimensions</h3>
+                                
+                                <!-- Wine Rack dimensions -->
+                                <div x-show="storageType === 'Wine Rack'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="rows" class="block text-sm font-medium text-gray-700">Number of Rows</label>
+                                        <input type="number" id="rows" name="rows" min="1" x-model="rows"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="columns" class="block text-sm font-medium text-gray-700">Number of Columns</label>
+                                        <input type="number" id="columns" name="columns" min="1" x-model="columns"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                </div>
+                                
+                                <!-- Wine Fridge dimensions -->
+                                <div x-show="storageType === 'Wine Fridge'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="sections" class="block text-sm font-medium text-gray-700">Number of Sections</label>
+                                        <input type="number" id="sections" name="sections" min="1" x-model="sections"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="shelves" class="block text-sm font-medium text-gray-700">Shelves per Section</label>
+                                        <input type="number" id="shelves" name="shelves" min="1" x-model="shelves"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="bottles-per-shelf" class="block text-sm font-medium text-gray-700">Bottles per Shelf</label>
+                                        <input type="number" id="bottles-per-shelf" name="bottlesPerShelf" min="1" x-model="bottlesPerShelf"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                </div>
+                                
+                                <!-- Other storage dimensions -->
+                                <div x-show="storageType !== 'Wine Rack' && storageType !== 'Wine Fridge'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="other-sections" class="block text-sm font-medium text-gray-700">Number of Sections</label>
+                                        <input type="number" id="other-sections" name="sections" min="1" x-model="sections"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="other-rows" class="block text-sm font-medium text-gray-700">Number of Rows</label>
+                                        <input type="number" id="other-rows" name="rows" min="1" x-model="rows"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="other-columns" class="block text-sm font-medium text-gray-700">Number of Columns</label>
+                                        <input type="number" id="other-columns" name="columns" min="1" x-model="columns"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                                    <p class="text-sm text-gray-700">Total positions: <span class="font-medium" x-text="totalPositions"></span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Position naming scheme -->
+                            <div>
+                                <label for="naming-scheme" class="block text-sm font-medium text-gray-700">Position Naming Scheme</label>
+                                <select id="naming-scheme" name="positionNamingScheme" x-model="namingScheme"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option>Section-Row-Column</option>
+                                    <option>Sequential Numbering</option>
+                                    <option>Row-Column</option>
+                                    <option>Custom</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Storage layout preview -->
+                            <div>
+                                <h3 class="text-base font-medium text-gray-700 mb-2">Storage Layout Preview</h3>
+                                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md overflow-x-auto">
+                                    <!-- Wine Rack preview -->
+                                    <div x-show="storageType === 'Wine Rack'" class="grid" 
+                                         :style="`grid-template-columns: repeat(${columns}, minmax(30px, 1fr)); gap: 4px;`">
+                                        <template x-for="r in rows" :key="r">
+                                            <template x-for="c in columns" :key="c">
+                                                <div class="h-8 bg-wine-100 border border-wine-200 rounded flex items-center justify-center text-xs">
+                                                    <span x-text="namingScheme === 'Sequential Numbering' ? ((r-1)*columns + c) : `${r}-${c}`"></span>
+                                                </div>
+                                            </template>
+                                        </template>
+                                    </div>
+                                    
+                                    <!-- Wine Fridge preview -->
+                                    <div x-show="storageType === 'Wine Fridge'">
+                                        <template x-for="s in sections" :key="s">
+                                            <div class="mb-4">
+                                                <p class="text-sm font-medium mb-1" x-text="`Section ${s}`"></p>
+                                                <div class="grid" :style="`grid-template-columns: repeat(${bottlesPerShelf}, minmax(30px, 1fr)); gap: 4px;`">
+                                                    <template x-for="shelf in shelves" :key="shelf">
+                                                        <template x-for="bottle in bottlesPerShelf" :key="bottle">
+                                                            <div class="h-8 bg-wine-100 border border-wine-200 rounded flex items-center justify-center text-xs">
+                                                                <span x-text="namingScheme === 'Sequential Numbering' ? 
+                                                                ((s-1)*shelves*bottlesPerShelf + (shelf-1)*bottlesPerShelf + bottle) : 
+                                                                (namingScheme === 'Section-Row-Column' ? `${s}-${shelf}-${bottle}` : 
+                                                                `${s}-${shelf}${String.fromCharCode(64+bottle)}`)"></span>
+                                                            </div>
+                                                        </template>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    
+                                    <!-- Other storage preview -->
+                                    <div x-show="storageType !== 'Wine Rack' && storageType !== 'Wine Fridge'">
+                                        <template x-for="s in sections" :key="s">
+                                            <div class="mb-4">
+                                                <p class="text-sm font-medium mb-1" x-text="`Section ${s}`"></p>
+                                                <div class="grid" :style="`grid-template-columns: repeat(${columns}, minmax(30px, 1fr)); gap: 4px;`">
+                                                    <template x-for="r in rows" :key="r">
+                                                        <template x-for="c in columns" :key="c">
+                                                            <div class="h-8 bg-wine-100 border border-wine-200 rounded flex items-center justify-center text-xs">
+                                                                <span x-text="namingScheme === 'Sequential Numbering' ? 
+                                                                ((s-1)*rows*columns + (r-1)*columns + c) : 
+                                                                (namingScheme === 'Section-Row-Column' ? `${s}-${r}-${c}` : 
+                                                                `${s}-${r}${String.fromCharCode(64+c)}`)"></span>
+                                                            </div>
+                                                        </template>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4">
+                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                    Save Storage Configuration
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2025 Wine Concierge. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for API Integration -->
+    <script>
+        // Fetch all storage configurations when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchStorageConfigurations();
+            
+            // Add event listener for form submission
+            document.getElementById('storage-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveStorageConfiguration();
+            });
+        });
+        
+        // Fetch existing storage configurations
+        async function fetchStorageConfigurations() {
+            try {
+                const response = await fetch('/api/storage');
+                const data = await response.json();
+                
+                const storageListElement = document.getElementById('storage-list');
+                
+                // Clear loading placeholder
+                storageListElement.innerHTML = '';
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    // Display each storage configuration
+                    data.forEach(storage => {
+                        storageListElement.innerHTML += `
+                            <div class="bg-white rounded-lg shadow-md p-6">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-bold text-lg">${storage.name}</h3>
+                                    <span class="px-2 py-1 bg-gray-200 rounded-full text-sm">${storage.type}</span>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-700">
+                                    <p>Total positions: ${storage.total_positions}</p>
+                                    <p>Naming scheme: ${storage.position_naming_scheme}</p>
+                                </div>
+                                <div class="mt-4 flex justify-end space-x-2">
+                                    <button onclick="editStorage('${storage.id}')" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">Edit</button>
+                                    <button onclick="deleteStorage('${storage.id}')" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Delete</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    // No storage configurations found
+                    storageListElement.innerHTML = `
+                        <div class="col-span-full p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                            <p class="text-gray-500">No storage configurations found. Create your first one below!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error fetching storage configurations:', error);
+                document.getElementById('storage-list').innerHTML = `
+                    <div class="col-span-full p-6 bg-red-50 rounded-lg border border-red-200 text-center">
+                        <p class="text-red-500">Failed to load storage configurations. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Save new storage configuration
+        async function saveStorageConfiguration() {
+            const form = document.getElementById('storage-form');
+            const formData = new FormData(form);
+            
+            // Create an object to hold the form data
+            const storageData = {
+                name: formData.get('name'),
+                type: formData.get('type'),
+                total_positions: calculateTotalPositions(formData),
+                position_naming_scheme: formData.get('positionNamingScheme'),
+                dimensions: getDimensions(formData)
+            };
+            
+            try {
+                const response = await fetch('/api/storage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(storageData)
+                });
+                
+                if (response.ok) {
+                    alert('Storage configuration saved successfully!');
+                    form.reset();
+                    fetchStorageConfigurations(); // Refresh the list
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to save storage: ${errorData.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error saving storage configuration:', error);
+                alert('Failed to save storage configuration. Please try again.');
+            }
+        }
+        
+        // Helper function to calculate total positions
+        function calculateTotalPositions(formData) {
+            const type = formData.get('type');
+            
+            if (type === 'Wine Rack') {
+                return parseInt(formData.get('rows')) * parseInt(formData.get('columns'));
+            } else if (type === 'Wine Fridge') {
+                return parseInt(formData.get('sections')) * parseInt(formData.get('shelves')) * parseInt(formData.get('bottlesPerShelf'));
+            } else {
+                return parseInt(formData.get('sections')) * parseInt(formData.get('rows')) * parseInt(formData.get('columns'));
+            }
+        }
+        
+        // Helper function to get dimensions object
+        function getDimensions(formData) {
+            const type = formData.get('type');
+            
+            if (type === 'Wine Rack') {
+                return {
+                    rows: parseInt(formData.get('rows')),
+                    columns: parseInt(formData.get('columns'))
+                };
+            } else if (type === 'Wine Fridge') {
+                return {
+                    sections: parseInt(formData.get('sections')),
+                    shelves: parseInt(formData.get('shelves')),
+                    bottles_per_shelf: parseInt(formData.get('bottlesPerShelf'))
+                };
+            } else {
+                return {
+                    sections: parseInt(formData.get('sections')),
+                    rows: parseInt(formData.get('rows')),
+                    columns: parseInt(formData.get('columns'))
+                };
+            }
+        }
+        
+        // Edit storage configuration
+        function editStorage(id) {
+            // In a real app, you would fetch the storage details by ID and populate the form
+            alert(`Edit storage with ID: ${id} - Functionality coming soon!`);
+        }
+        
+        // Delete storage configuration
+        async function deleteStorage(id) {
+            if (confirm('Are you sure you want to delete this storage? This will also remove all wines stored in it.')) {
+                try {
+                    const response = await fetch(`/api/storage/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        alert('Storage deleted successfully!');
+                        fetchStorageConfigurations(); // Refresh the list
+                    } else {
+                        const errorData = await response.json();
+                        alert(`Failed to delete storage: ${errorData.detail || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting storage:', error);
+                    alert('Failed to delete storage. Please try again.');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

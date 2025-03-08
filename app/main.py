@@ -1,8 +1,9 @@
-import os
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.responses import HTMLResponse
+import os
 from app.config import settings
 from app.api.routes import router as api_router
 
@@ -17,20 +18,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include API routers
 app.include_router(api_router, prefix="/api")
 
 # Create uploads directory if it doesn't exist
 os.makedirs(settings.upload_dir, exist_ok=True)
 
-# Mount static files
+# Set up static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
-@app.get("/")
-async def root():
-    return {"message": f"Welcome to {settings.app_name}!"}
+# Set up templates
+templates = Jinja2Templates(directory="templates")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+# Web routes
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/collection.html", response_class=HTMLResponse)
+async def collection(request: Request):
+    return templates.TemplateResponse("collection.html", {"request": request})
+
+@app.get("/storage.html", response_class=HTMLResponse)
+async def storage(request: Request):
+    return templates.TemplateResponse("storage.html", {"request": request})
+
+@app.get("/add-wine.html", response_class=HTMLResponse)
+async def add_wine(request: Request):
+    return templates.TemplateResponse("add-wine.html", {"request": request})
+
+@app.get("/pairing.html", response_class=HTMLResponse)
+async def pairing(request: Request):
+    return templates.TemplateResponse("pairing.html", {"request": request})

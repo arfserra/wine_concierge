@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wine Pairing - Wine Concierge</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wine: {
+                            50: '#FCF7F8',
+                            100: '#F5E6E8',
+                            200: '#E8C8CD',
+                            300: '#D9A5AD',
+                            400: '#C97F8C',
+                            500: '#B85A6A',
+                            600: '#A13D50',
+                            700: '#7E2D3D',
+                            800: '#5A202B',
+                            900: '#38141B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for minimal interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Mobile Navigation -->
+    <nav x-data="{ open: false }" class="bg-wine-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <!-- Logo and brand -->
+                <div class="flex items-center">
+                    <a href="/" class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L12 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11C8 11 8 15 12 15C16 15 16 11 16 11" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 17H15L14 21H10L9 17Z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.2"/>
+                        </svg>
+                        <span class="font-semibold text-xl tracking-tight">Wine Concierge</span>
+                    </a>
+                </div>
+                
+                <!-- Hamburger menu button -->
+                <div class="flex items-center sm:hidden">
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-wine-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Home</a>
+                        <a href="/collection.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">My Collection</a>
+                        <a href="/storage.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Storage Setup</a>
+                        <a href="/add-wine.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600">Add Wine</a>
+                        <a href="/pairing.html" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 bg-wine-600">Pairing</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Home</a>
+                <a href="/collection.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">My Collection</a>
+                <a href="/storage.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Storage Setup</a>
+                <a href="/add-wine.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600">Add Wine</a>
+                <a href="/pairing.html" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 bg-wine-600">Pairing</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <h1 class="text-2xl font-semibold text-gray-900">Wine Pairing Recommendations</h1>
+                
+                <div x-data="{ 
+                    activeTab: 'text',
+                    foodDescription: '',
+                    foodImage: null,
+                    foodImagePreview: null,
+                    loading: false,
+                    emptyCollection: false,
+                    result: null,
+                    error: null
+                }" class="mt-8">
+                    <!-- Tabs -->
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8">
+                            <button @click="activeTab = 'text'" :class="{'border-wine-500 text-wine-600': activeTab === 'text', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'text'}" class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                                Describe Your Food
+                            </button>
+                            <button @click="activeTab = 'photo'" :class="{'border-wine-500 text-wine-600': activeTab === 'photo', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'photo'}" class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                                Take a Food Photo
+                            </button>
+                        </nav>
+                    </div>
+                    
+                    <!-- Text Description Tab -->
+                    <div x-show="activeTab === 'text'" class="mt-6">
+                        <div class="mb-6">
+                            <label for="food-description" class="block text-sm font-medium text-gray-700 mb-1">What are you planning to eat?</label>
+                            <textarea 
+                                id="food-description" 
+                                x-model="foodDescription" 
+                                rows="4" 
+                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" 
+                                placeholder="Describe your meal or recipe... e.g., Grilled salmon with lemon and herbs"
+                            ></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button 
+                                @click="getPairingByDescription()" 
+                                :disabled="loading || !foodDescription.trim()" 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="loading ? 'Getting Recommendations...' : 'Get Recommendations'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Photo Tab -->
+                    <div x-show="activeTab === 'photo'" class="mt-6">
+                        <div class="text-center mb-6">
+                            <div x-show="!foodImagePreview" class="mb-4">
+                                <p class="text-gray-700 mb-4">Take a photo of your food to get wine pairing recommendations.</p>
+                                
+                                <!-- Camera capture button (mobile) -->
+                                <button @click="document.getElementById('food-camera-input').click()" class="w-full mb-3 flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                    </svg>
+                                    Take Photo
+                                </button>
+                                <input 
+                                    id="food-camera-input" 
+                                    type="file" 
+                                    accept="image/*" 
+                                    capture="environment" 
+                                    class="hidden"
+                                    @change="
+                                        foodImage = $event.target.files[0];
+                                        if (foodImage) {
+                                            const reader = new FileReader();
+                                            reader.onload = e => foodImagePreview = e.target.result;
+                                            reader.readAsDataURL(foodImage);
+                                        }
+                                    "
+                                >
+                                
+                                <!-- File upload button -->
+                                <div class="flex items-center justify-center">
+                                    <p class="text-sm text-gray-500 mr-2">or</p>
+                                    <label for="food-file-input" class="cursor-pointer text-wine-600 hover:text-wine-700">
+                                        upload from device
+                                        <input 
+                                            id="food-file-input" 
+                                            type="file" 
+                                            accept="image/*" 
+                                            class="hidden"
+                                            @change="
+                                                foodImage = $event.target.files[0];
+                                                if (foodImage) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = e => foodImagePreview = e.target.result;
+                                                    reader.readAsDataURL(foodImage);
+                                                }
+                                            "
+                                        >
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div x-show="foodImagePreview" class="mb-4">
+                                <img :src="foodImagePreview" class="mx-auto max-h-64 rounded-md" alt="Food Image Preview">
+                                                                    <div class="mt-3 flex justify-center">
+                                        <button @click="foodImage = null; foodImagePreview = null;" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                                            Take Another Photo
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button 
+                                @click="getPairingByImage()" 
+                                :disabled="loading || !foodImage" 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="loading ? 'Analyzing Image...' : 'Get Recommendations'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Empty Collection Alert -->
+                    <div x-show="emptyCollection" class="mt-6 p-4 border border-yellow-300 bg-yellow-50 rounded-md text-yellow-800">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">Your wine collection is empty</h3>
+                                <div class="mt-2 text-sm text-yellow-700">
+                                    <p>Add wines to your collection to get personalized pairing recommendations.</p>
+                                </div>
+                                <div class="mt-4">
+                                    <div class="-mx-2 -my-1.5 flex">
+                                        <a href="/add-wine.html" class="bg-yellow-50 px-2 py-1.5 rounded-md text-sm font-medium text-yellow-800 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600">
+                                            Add a Wine
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <div x-show="error" class="mt-6 p-4 border border-red-300 bg-red-50 rounded-md text-red-800">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">There was an error</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <p x-text="error"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div x-show="result" class="mt-8 bg-white shadow overflow-hidden rounded-lg">
+                        <div class="px-4 py-5 sm:px-6 bg-gray-50">
+                            <h2 class="text-lg font-medium text-gray-900">Wine Pairing Recommendation</h2>
+                            <p class="mt-1 text-sm text-gray-500" x-text="activeTab === 'text' ? `For: ${foodDescription}` : 'Based on your food image'"></p>
+                        </div>
+                        <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                            <div class="prose max-w-none text-gray-700" x-html="result"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2025 Wine Concierge. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for API Integration -->
+    <script>
+        // Use Alpine.js for component state
+        document.addEventListener('alpine:init', () => {
+            // Check if collection is empty when component is loaded
+            checkWineCollection();
+        });
+        
+        // Check if wine collection has any wines
+        async function checkWineCollection() {
+            try {
+                const response = await fetch('/api/wines');
+                const wines = await response.json();
+                
+                const component = document.querySelector('[x-data]').__x.$data;
+                component.emptyCollection = wines.length === 0;
+            } catch (error) {
+                console.error('Error checking wine collection:', error);
+            }
+        }
+        
+        // Get pairing recommendations based on text description
+        function getPairingByDescription() {
+            const component = document.querySelector('[x-data]').__x.$data;
+            component.loading = true;
+            component.result = null;
+            component.error = null;
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('food_description', component.foodDescription);
+            
+            // Send request to API
+            fetch('/api/recommendations/pairing', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to get pairing recommendations');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Format and display the recommendation
+                    component.result = formatRecommendation(data.recommendation);
+                    component.loading = false;
+                } else {
+                    component.error = data.error || 'Failed to get pairing recommendations';
+                    component.loading = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting pairing recommendations:', error);
+                component.error = 'There was an error getting pairing recommendations. Please try again.';
+                component.loading = false;
+            });
+        }
+        
+        // Get pairing recommendations based on food image
+        function getPairingByImage() {
+            const component = document.querySelector('[x-data]').__x.$data;
+            component.loading = true;
+            component.result = null;
+            component.error = null;
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('food_image', component.foodImage);
+            
+            // Send request to API
+            fetch('/api/recommendations/image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to analyze food image');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Format and display the recommendation
+                    component.result = formatRecommendation(data.recommendation);
+                    component.loading = false;
+                } else {
+                    component.error = data.error || 'Failed to analyze food image';
+                    component.loading = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error analyzing food image:', error);
+                component.error = 'There was an error analyzing your food image. Please try again.';
+                component.loading = false;
+            });
+        }
+        
+        // Format the recommendation text with some styling
+        function formatRecommendation(recommendation) {
+            // Basic formatting - add paragraphs
+            let formatted = '';
+            const paragraphs = recommendation.split('\n\n');
+            
+            paragraphs.forEach(paragraph => {
+                if (paragraph.trim()) {
+                    // Check if this paragraph is a heading (e.g., starts with "Recommended Wine:")
+                    if (paragraph.includes(':') && paragraph.split(':')[0].length < 30) {
+                        const parts = paragraph.split(':');
+                        formatted += `<h3 class="text-lg font-medium text-wine-700 mt-4 mb-2">${parts[0]}:</h3>`;
+                        formatted += `<p class="mb-4">${parts.slice(1).join(':')}</p>`;
+                    } else {
+                        formatted += `<p class="mb-4">${paragraph}</p>`;
+                    }
+                }
+            });
+            
+            return formatted;
+        }
+    </script>
+</body>
+</html>
