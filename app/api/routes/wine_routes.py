@@ -58,15 +58,28 @@ async def add_wine(
             image_path = await image_service.save_wine_label(label_image)
             wine_create.label_image_url = image_path
             
-            # Analyze the image with OpenAI
-            full_path = f"{image_service.upload_dir}/{image_path}"
+            # Use absolute path for OpenAI analysis
+            import os
+            full_path = os.path.abspath(os.path.join(image_service.upload_dir, image_path))
+            print(f"Full image path for analysis: {full_path}")
+            
+            # Check if the file exists
+            if not os.path.exists(full_path):
+                print(f"Warning: Image file not found at {full_path}")
+                # Try alternative path construction
+                full_path = os.path.join(os.getcwd(), image_service.upload_dir, image_path)
+                print(f"Trying alternative path: {full_path}")
+            
+            # Analyze the image with OpenAI using our simpler approach
             analysis_result = openai_service.analyze_wine_label(full_path)
             
             if analysis_result["success"]:
-                # Use AI extracted data to fill in missing fields
-                extracted_data = analysis_result["data"]
+                # Store the full description
+                wine_create.description = analysis_result["description"]
                 
-                # Only update fields that were not provided by the user
+                # Update basic fields if they're not already provided
+                extracted_data = analysis_result["key_info"]
+                
                 if not wine_create.name and extracted_data.get("name"):
                     wine_create.name = extracted_data["name"]
                     
@@ -88,14 +101,11 @@ async def add_wine(
                 if not wine_create.type and extracted_data.get("type"):
                     wine_create.type = extracted_data["type"]
                 
-                # Add metadata from analysis
+                # Add original response to metadata
                 if not wine_create.metadata:
                     wine_create.metadata = {}
                     
-                wine_create.metadata["ai_analysis"] = {
-                    "confidence_score": analysis_result["confidence_score"],
-                    "raw_response": analysis_result["raw_response"]
-                }
+                wine_create.metadata["ai_analysis"] = analysis_result
         
         # Create the wine
         wine_repo = WineRepository(db)
@@ -111,6 +121,50 @@ async def add_wine(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while adding the wine: {str(e)}"
         )
+
+@router.post("/analyze", status_code=status.HTTP_200_OK)
+async def analyze_wine_label(
+    label_image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id)
+):
+    """Analyze a wine label image and extract information."""
+    try:
+        # Save the uploaded image temporarily
+        import tempfile
+        import os
+        
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        try:
+            contents = await label_image.read()
+            with open(temp_file.name, "wb") as f:
+                f.write(contents)
+            
+            # Analyze the label using our simplified approach
+            analysis_result = openai_service.analyze_wine_label(temp_file.name)
+            
+            # Save the image permanently if analysis was successful
+            if analysis_result["success"]:
+                # Reset the file pointer to beginning
+                await label_image.seek(0)
+                saved_image_path = await image_service.save_wine_label(label_image)
+                analysis_result["label_image_url"] = saved_image_path
+            
+            return analysis_result
+        finally:
+            # Clean up temporary file
+            temp_file.close()
+            os.unlink(temp_file.name)
+            
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"Error analyzing wine label: {str(e)}\n{error_detail}")
+        return {
+            "success": False,
+            "error": str(e),
+            "detail": error_detail
+        }
 
 @router.put("/{wine_id}", response_model=WineInDB)
 async def update_wine(

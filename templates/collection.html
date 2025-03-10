@@ -250,6 +250,10 @@
                                         <p class="mb-1"><span class="font-medium">Region:</span> <span x-text="wineDetail.region || 'Unknown'"></span></p>
                                         <p class="mb-1"><span class="font-medium">Country:</span> <span x-text="wineDetail.country || 'Unknown'"></span></p>
                                     </div>
+                                    <div class="mt-4 p-4 bg-gray-50 rounded-md">
+                                        <h4 class="font-medium mb-2">Wine Description</h4>
+                                        <div class="prose prose-sm max-w-none" x-html="wineDetail.wine_metadata && wineDetail.wine_metadata.description ? wineDetail.wine_metadata.description : (wineDetail.description || 'No description available.')"></div>
+                                    </div>
                                 </div>
                                 
                                 <div class="mt-4 p-3 bg-gray-50 rounded-md">

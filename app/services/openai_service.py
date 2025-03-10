@@ -20,29 +20,37 @@ class OpenAIService:
     def analyze_wine_label(self, image_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Analyze a wine label image using OpenAI's Vision capabilities.
-        Returns extracted wine information.
+        Returns a comprehensive description of the wine.
         """
         try:
             # Ensure image_path is a Path object
             if isinstance(image_path, str):
                 image_path = Path(image_path)
             
+            # Check if the file exists
+            if not os.path.exists(image_path):
+                logger.error(f"Image file not found: {image_path}")
+                return {
+                    "success": False,
+                    "error": f"Image file not found: {image_path}"
+                }
+            
             with open(image_path, "rb") as image_file:
                 base64_image = base64.b64encode(image_file.read()).decode('utf-8')
             
             response = self.client.chat.completions.create(
-                model="chatgpt-4o-latest",  # Updated to current model with vision capabilities
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a wine expert assistant. Extract all relevant information from this wine label image."
+                        "content": "You are a wine expert assistant. Extract information from this wine label and create a comprehensive description. Include the name, producer, vintage, region, country, varietal(s), and type (red, white, etc.) if present. Also include any relevant information about the wine's style and potential taste profile based on your expertise. Present this information in a well-formatted structure with clear headings."
                     },
                     {
                         "role": "user",
                         "content": [
                             {
                                 "type": "text", 
-                                "text": "Please extract the following details from this wine label: name, producer, vintage, region, country, varietal(s), and type (red, white, etc.)."
+                                "text": "Please analyze this wine label and provide a complete description."
                             },
                             {
                                 "type": "image_url", 
@@ -51,16 +59,18 @@ class OpenAIService:
                         ]
                     }
                 ],
-                max_tokens=500
+                max_tokens=800
             )
             
-            # Process and structure the response
-            extracted_info = self._parse_label_extraction(response.choices[0].message.content)
+            description = response.choices[0].message.content
+            
+            # Extract key fields for database filtering/searching
+            key_info = self._extract_key_fields(description)
+            
             return {
                 "success": True,
-                "data": extracted_info,
-                "confidence_score": self._calculate_confidence_score(extracted_info),
-                "raw_response": response.choices[0].message.content
+                "description": description,
+                "key_info": key_info
             }
             
         except Exception as e:
@@ -70,16 +80,104 @@ class OpenAIService:
                 "error": str(e)
             }
     
+    def _extract_key_fields(self, description: str) -> Dict[str, Any]:
+        """
+        Extract key fields from the description for database storage.
+        This is a simple extraction for basic filtering/sorting purposes.
+        """
+        key_info = {
+            "name": "",
+            "producer": "",
+            "vintage": None,
+            "type": "",
+            "region": "",
+            "country": "",
+            "varietal": []
+        }
+        
+        # Simple extraction based on common patterns in the GPT response
+        import re
+        
+        # Look for wine name - typically has specific patterns
+        name_patterns = [
+            r'(?:Name|Wine):\s*([^\n]+)',
+            r'(?:Name|Wine):\*\*\s*([^\n]+)',
+            r'\*\*(?:Name|Wine):\*\*\s*([^\n]+)'
+        ]
+        
+        for pattern in name_patterns:
+            name_match = re.search(pattern, description)
+            if name_match:
+                key_info["name"] = name_match.group(1).strip()
+                break
+                
+        # Look for producer
+        producer_patterns = [
+            r'(?:Producer|Winery):\s*([^\n]+)',
+            r'(?:Producer|Winery):\*\*\s*([^\n]+)',
+            r'\*\*(?:Producer|Winery):\*\*\s*([^\n]+)'
+        ]
+        
+        for pattern in producer_patterns:
+            producer_match = re.search(pattern, description)
+            if producer_match:
+                key_info["producer"] = producer_match.group(1).strip()
+                break
+                
+        # Look for vintage - extract 4-digit year
+        vintage_match = re.search(r'\b(19|20)\d{2}\b', description)
+        if vintage_match:
+            try:
+                key_info["vintage"] = int(vintage_match.group(0))
+            except:
+                pass
+                
+        # Look for wine type
+        type_patterns = [
+            r'(?:Type|Wine Type|Style):\s*(Red|White|Rosé|Rose|Sparkling|Dessert)',
+            r'(?:Type|Wine Type|Style):\*\*\s*(Red|White|Rosé|Rose|Sparkling|Dessert)',
+            r'\*\*(?:Type|Wine Type|Style):\*\*\s*(Red|White|Rosé|Rose|Sparkling|Dessert)'
+        ]
+        
+        for pattern in type_patterns:
+            type_match = re.search(pattern, description, re.IGNORECASE)
+            if type_match:
+                key_info["type"] = type_match.group(1).strip()
+                break
+        
+        # If we don't have a type yet, look for general mentions of wine types
+        if not key_info["type"]:
+            general_type_match = re.search(r'\b(Red|White|Rosé|Rose|Sparkling|Dessert)\b(?:\s+wine)?', description, re.IGNORECASE)
+            if general_type_match:
+                key_info["type"] = general_type_match.group(1).strip()
+        
+        # For basic info, this simple extraction should be sufficient
+        # In a production system, you might want to use a more robust approach
+        
+        return key_info
+    
     def get_wine_pairing(self, food_description: str, available_wines: List[Wine]) -> Dict[str, Any]:
         """
         Get wine pairing recommendations based on food description and available wines.
+        Uses wine descriptions for more informed recommendations.
         """
         try:
-            # Format available wines for context
-            wines_context = self._format_wines_for_context(available_wines)
+            # Format available wines with their descriptions
+            wines_context = ""
+            for i, wine in enumerate(available_wines, 1):
+                wine_info = f"{i}. {wine.name}"
+                if wine.vintage:
+                    wine_info += f" ({wine.vintage})"
+                if wine.producer:
+                    wine_info += f" by {wine.producer}"
+                if wine.type:
+                    wine_info += f" - {wine.type} wine"
+                if wine.wine_metadata and "description" in wine.wine_metadata:
+                    wine_info += f"\n   {wine.wine_metadata['description']}"
+                wines_context += wine_info + "\n\n"
             
             response = self.client.chat.completions.create(
-                model="chatgpt-4o-latest",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
@@ -119,10 +217,21 @@ class OpenAIService:
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 
             # Format available wines for context
-            wines_context = self._format_wines_for_context(available_wines)
+            wines_context = ""
+            for i, wine in enumerate(available_wines, 1):
+                wine_info = f"{i}. {wine.name}"
+                if wine.vintage:
+                    wine_info += f" ({wine.vintage})"
+                if wine.producer:
+                    wine_info += f" by {wine.producer}"
+                if wine.type:
+                    wine_info += f" - {wine.type} wine"
+                if wine.wine_metadata and "description" in wine.wine_metadata:
+                    wine_info += f"\n   {wine.wine_metadata['description']}"
+                wines_context += wine_info + "\n\n"
             
             response = self.client.chat.completions.create(
-                model="chatgpt-4o-latest",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
@@ -156,85 +265,3 @@ class OpenAIService:
                 "success": False,
                 "error": str(e)
             }
-    
-    def _format_wines_for_context(self, wines: List[Wine]) -> str:
-        """Format wines list as a structured text for OpenAI context."""
-        wines_text = ""
-        for i, wine in enumerate(wines, 1):
-            vintage_str = f", {wine.vintage}" if wine.vintage else ""
-            region_str = f", {wine.region}" if wine.region else ""
-            country_str = f", {wine.country}" if wine.country else ""
-            varietal_str = f", {', '.join(wine.varietal)}" if wine.varietal else ""
-            location_str = f" (Location: {wine.position})" if wine.position else ""
-            
-            wines_text += f"{i}. {wine.name} by {wine.producer}{vintage_str}{varietal_str}{region_str}{country_str}{location_str}\n"
-        
-        return wines_text
-    
-    def _parse_label_extraction(self, content: str) -> Dict[str, Any]:
-        """Parse the text response from OpenAI into structured data."""
-        # This is a simplified example - in production you'd want more robust parsing
-        extracted = {
-            "name": "",
-            "producer": "",
-            "vintage": None,
-            "region": "",
-            "country": "",
-            "varietal": [],
-            "type": ""
-        }
-        
-        lines = content.strip().split('\n')
-        for line in lines:
-            line = line.strip()
-            if ':' in line:
-                key, value = line.split(':', 1)
-                key = key.strip().lower()
-                value = value.strip()
-                
-                if key == "name" or key == "wine name":
-                    extracted["name"] = value
-                elif key == "producer" or key == "winery":
-                    extracted["producer"] = value
-                elif key == "vintage" or key == "year":
-                    try:
-                        extracted["vintage"] = int(value)
-                    except:
-                        # Try to extract just the year if there's other text
-                        import re
-                        year_match = re.search(r'\b(19|20)\d{2}\b', value)
-                        if year_match:
-                            extracted["vintage"] = int(year_match.group(0))
-                elif key == "region":
-                    extracted["region"] = value
-                elif key == "country":
-                    extracted["country"] = value
-                elif key == "varietal" or key == "grape" or key == "varietals" or key == "grapes":
-                    # Handle multiple varietals separated by commas or 'and'
-                    varietals = [v.strip() for v in value.replace(' and ', ',').split(',')]
-                    extracted["varietal"] = varietals
-                elif key == "type" or key == "wine type":
-                    extracted["type"] = value
-        
-        return extracted
-    
-    def _calculate_confidence_score(self, extracted_info: Dict[str, Any]) -> float:
-        """
-        Calculate a confidence score based on completeness of extracted information.
-        """
-        # Simple scoring based on field presence
-        required_fields = ["name", "producer"]
-        optional_fields = ["vintage", "varietal", "type", "region", "country"]
-        
-        score = 0.0
-        total_weight = len(required_fields) + 0.5 * len(optional_fields)
-        
-        for field in required_fields:
-            if extracted_info.get(field):
-                score += 1.0
-                
-        for field in optional_fields:
-            if extracted_info.get(field):
-                score += 0.5
-                
-        return min(score / total_weight, 1.0)

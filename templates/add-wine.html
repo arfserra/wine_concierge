@@ -230,21 +230,59 @@
                                             method: 'POST',
                                             body: formData
                                         })
-                                        .then(response => response.json())
+                                        .then(response => {
+                                            if (!response.ok) {
+                                                throw new Error(`HTTP error! Status: ${response.status}`);
+                                            }
+                                            return response.json();
+                                        })
                                         .then(data => {
+                                            console.log('Analyze API response:', data);
+                                            
                                             if (data.success) {
-                                                // Update wine data with analyzed information
-                                                Object.assign(wineData, data.data);
+                                                // Set the full description in metadata for later storage
+                                                if (!wineData.metadata) {
+                                                    wineData.metadata = {};
+                                                }
+                                                wineData.metadata.description = data.description;
+                                                
+                                                // Also extract key fields if available
+                                                if (data.key_info) {
+                                                    if (data.key_info.name) wineData.name = data.key_info.name;
+                                                    if (data.key_info.producer) wineData.producer = data.key_info.producer;
+                                                    if (data.key_info.vintage) wineData.vintage = data.key_info.vintage;
+                                                    if (data.key_info.region) wineData.region = data.key_info.region;
+                                                    if (data.key_info.country) wineData.country = data.key_info.country;
+                                                    if (data.key_info.type) wineData.type = data.key_info.type;
+                                                    if (data.key_info.varietal && data.key_info.varietal.length > 0) {
+                                                        wineData.varietal = data.key_info.varietal;
+                                                    }
+                                                }
+                                                
                                                 // Store the label image URL if available
                                                 if (data.label_image_url) {
                                                     wineData.label_image_url = data.label_image_url;
                                                 }
+                                                
+                                                // Display a notification to user about successful analysis
+                                                // This requires adding a notification element to your HTML
+                                                document.getElementById('analysis-notification').textContent = 
+                                                    'Label analyzed successfully! Please review and edit information as needed.';
+                                                document.getElementById('analysis-notification').classList.remove('hidden');
+                                            } else {
+                                                console.error('Analysis failed:', data.error);
+                                                document.getElementById('analysis-notification').textContent = 
+                                                    'Label analysis failed. Please fill in the details manually.';
+                                                document.getElementById('analysis-notification').classList.remove('hidden');
                                             }
                                             step = 2;
                                             analyzingLabel = false;
                                         })
                                         .catch(error => {
                                             console.error('Error analyzing label:', error);
+                                            document.getElementById('analysis-notification').textContent = 
+                                                'Error analyzing label. Please fill in the details manually.';
+                                            document.getElementById('analysis-notification').classList.remove('hidden');
                                             step = 2;
                                             analyzingLabel = false;
                                         });
@@ -274,68 +312,43 @@
                     <div x-show="step === 2" class="bg-white shadow-md rounded-lg p-6">
                         <h2 class="text-xl font-medium text-gray-800 mb-6">Wine Details</h2>
                         
+                        <!-- Notification area for analysis results -->
+                        <div id="analysis-notification" x-show="labelImage && analyzedSuccessfully" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-md text-green-800">
+                            Label analyzed successfully! Feel free to edit the details below.
+                        </div>
+                        
                         <form class="space-y-6">
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label for="wine-name" class="block text-sm font-medium text-gray-700">Wine Name*</label>
-                                    <input type="text" id="wine-name" x-model="wineData.name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" required>
-                                </div>
-                                
-                                <div>
-                                    <label for="wine-producer" class="block text-sm font-medium text-gray-700">Producer</label>
-                                    <input type="text" id="wine-producer" x-model="wineData.producer" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
-                                </div>
-                                
-                                <div>
-                                    <label for="wine-vintage" class="block text-sm font-medium text-gray-700">Vintage</label>
-                                    <input type="number" id="wine-vintage" x-model="wineData.vintage" min="1900" max="2030" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
-                                </div>
-                                
-                                <div>
-                                    <label for="wine-type" class="block text-sm font-medium text-gray-700">Wine Type</label>
-                                    <select id="wine-type" x-model="wineData.type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
-                                        <option value="">Select Type</option>
-                                        <option value="Red">Red</option>
-                                        <option value="White">White</option>
-                                        <option value="Rosé">Rosé</option>
-                                        <option value="Sparkling">Sparkling</option>
-                                        <option value="Dessert">Dessert</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label for="wine-region" class="block text-sm font-medium text-gray-700">Region</label>
-                                    <input type="text" id="wine-region" x-model="wineData.region" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
-                                </div>
-                                
-                                <div>
-                                    <label for="wine-country" class="block text-sm font-medium text-gray-700">Country</label>
-                                    <input type="text" id="wine-country" x-model="wineData.country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
-                                </div>
+                            <!-- Essential fields only -->
+                            <div>
+                                <label for="wine-name" class="block text-sm font-medium text-gray-700">Wine Name*</label>
+                                <input type="text" id="wine-name" x-model="wineData.name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" required>
                             </div>
                             
-                            <!-- Varietals with add/remove functionality -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Varietals</label>
-                                <div class="flex">
-                                    <input type="text" x-model="varietalInput" @keydown.enter.prevent="addVarietal()" class="block w-full rounded-l-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" placeholder="Add varietal...">
-                                    <button type="button" @click="addVarietal()" class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-700 sm:text-sm">
-                                        Add
-                                    </button>
-                                </div>
-                                
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    <template x-for="(varietal, index) in wineData.varietal" :key="index">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-wine-100 text-wine-800">
-                                            <span x-text="varietal"></span>
-                                            <button type="button" @click="removeVarietal(index)" class="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full bg-wine-200 text-wine-500 hover:bg-wine-300 hover:text-wine-600">
-                                                <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-                                </div>
+                                <label for="wine-type" class="block text-sm font-medium text-gray-700">Wine Type</label>
+                                <select id="wine-type" x-model="wineData.type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm">
+                                    <option value="">Select Type</option>
+                                    <option value="Red">Red</option>
+                                    <option value="White">White</option>
+                                    <option value="Rosé">Rosé</option>
+                                    <option value="Sparkling">Sparkling</option>
+                                    <option value="Dessert">Dessert</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Wine Description (AI-generated or user-edited) -->
+                            <div>
+                                <label for="wine-description" class="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea 
+                                    id="wine-description" 
+                                    x-model="wineData.description" 
+                                    rows="6" 
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                                    placeholder="Wine description including details about producer, vintage, region, varietal, and tasting notes..."
+                                ></textarea>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    This description will be used to help with pairing recommendations and displaying details about your wine.
+                                </p>
                             </div>
                             
                             <div class="pt-4 flex justify-between">
@@ -346,6 +359,10 @@
                                 <button 
                                     type="button" 
                                     @click="
+                                        // Store just the essential data for storage and filtering
+                                        wineData.producer = extractField('producer', wineData.description);
+                                        wineData.vintage = extractYear(wineData.description);
+                                        
                                         // Fetch storage units for next step
                                         fetch('/api/storage')
                                         .then(response => response.json())

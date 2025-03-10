@@ -16,6 +16,7 @@ class WineCreate(WineBase):
     storage_id: str
     position: Optional[str] = None
     label_image_url: Optional[str] = None
+    description: Optional[str] = None
     metadata: Optional[Dict] = None
 
 class WineUpdate(BaseModel):
@@ -29,6 +30,7 @@ class WineUpdate(BaseModel):
     alcohol_percentage: Optional[float] = None
     storage_id: Optional[str] = None
     position: Optional[str] = None
+    description: Optional[str] = None
     metadata: Optional[Dict] = None
 
 class WineInDB(WineBase):
@@ -37,6 +39,7 @@ class WineInDB(WineBase):
     position: Optional[str] = None
     added_date: datetime
     label_image_url: Optional[str] = None
+    description: Optional[str] = None
     metadata: Optional[Dict] = None
     user_id: str
     

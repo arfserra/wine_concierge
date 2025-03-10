@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse  # Add this import
 import os
 from app.config import settings
 from app.api.routes import router as api_router
@@ -51,3 +51,7 @@ async def add_wine(request: Request):
 @app.get("/pairing.html", response_class=HTMLResponse)
 async def pairing(request: Request):
     return templates.TemplateResponse("pairing.html", {"request": request})
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
