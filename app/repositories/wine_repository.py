@@ -58,10 +58,23 @@ class WineRepository:
         
         # Create wine object with adjusted fields
         wine_dict = wine_data.model_dump()
+
+        # Handle description field
+        if 'description' in wine_dict:
+         # Keep description field as is
+             pass
+        # Also ensure it's saved in metadata if needed
+        if 'metadata' in wine_dict and 'description' in wine_dict:
+            if not wine_dict['metadata']:
+                wine_dict['metadata'] = {}
+            wine_dict['metadata']['description'] = wine_dict['description']
         
         # Handle renaming of 'metadata' field to 'wine_metadata' for the database model
         if 'metadata' in wine_dict:
             wine_dict['wine_metadata'] = wine_dict.pop('metadata')
+
+        # Make sure description is preserved
+        print(f"Creating wine with data: {wine_dict}")  # Add this debug log
         
         # Add user_id
         wine_dict['user_id'] = user_id

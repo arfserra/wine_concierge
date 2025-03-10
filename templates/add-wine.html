@@ -230,25 +230,21 @@
                                             method: 'POST',
                                             body: formData
                                         })
-                                        .then(response => {
-                                            if (!response.ok) {
-                                                throw new Error(`HTTP error! Status: ${response.status}`);
-                                            }
-                                            return response.json();
-                                        })
+                                        .then(response => response.json())
                                         .then(data => {
-                                            console.log('Analyze API response:', data);
+                                            console.log('API response:', data);
                                             
                                             if (data.success) {
-                                                // Set the full description in metadata for later storage
-                                                if (!wineData.metadata) {
-                                                    wineData.metadata = {};
-                                                }
-                                                wineData.metadata.description = data.description;
+                                                // Use the clean description provided by the server
+                                                wineData.description = data.clean_description || 'Wine description';
+                                                document.getElementById('wine-description').value = wineData.description;
                                                 
-                                                // Also extract key fields if available
+                                                // Set other fields
                                                 if (data.key_info) {
-                                                    if (data.key_info.name) wineData.name = data.key_info.name;
+                                                    if (data.key_info.name) {
+                                                        wineData.name = data.key_info.name;
+                                                        document.getElementById('wine-name').value = data.key_info.name;
+                                                    }
                                                     if (data.key_info.producer) wineData.producer = data.key_info.producer;
                                                     if (data.key_info.vintage) wineData.vintage = data.key_info.vintage;
                                                     if (data.key_info.region) wineData.region = data.key_info.region;
@@ -259,34 +255,24 @@
                                                     }
                                                 }
                                                 
-                                                // Store the label image URL if available
+                                                // Store image URL
                                                 if (data.label_image_url) {
                                                     wineData.label_image_url = data.label_image_url;
                                                 }
-                                                
-                                                // Display a notification to user about successful analysis
-                                                // This requires adding a notification element to your HTML
-                                                document.getElementById('analysis-notification').textContent = 
-                                                    'Label analyzed successfully! Please review and edit information as needed.';
-                                                document.getElementById('analysis-notification').classList.remove('hidden');
-                                            } else {
-                                                console.error('Analysis failed:', data.error);
-                                                document.getElementById('analysis-notification').textContent = 
-                                                    'Label analysis failed. Please fill in the details manually.';
-                                                document.getElementById('analysis-notification').classList.remove('hidden');
-                                            }
+                                        
+                                            
                                             step = 2;
                                             analyzingLabel = false;
                                         })
                                         .catch(error => {
-                                            console.error('Error analyzing label:', error);
+                                            console.error('Error:', error);
                                             document.getElementById('analysis-notification').textContent = 
                                                 'Error analyzing label. Please fill in the details manually.';
                                             document.getElementById('analysis-notification').classList.remove('hidden');
                                             step = 2;
                                             analyzingLabel = false;
-                                        });
-                                    " 
+                                        });"
+
                                     class="flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
                                     :disabled="analyzingLabel"
                                 >
@@ -312,10 +298,6 @@
                     <div x-show="step === 2" class="bg-white shadow-md rounded-lg p-6">
                         <h2 class="text-xl font-medium text-gray-800 mb-6">Wine Details</h2>
                         
-                        <!-- Notification area for analysis results -->
-                        <div id="analysis-notification" x-show="labelImage && analyzedSuccessfully" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-md text-green-800">
-                            Label analyzed successfully! Feel free to edit the details below.
-                        </div>
                         
                         <form class="space-y-6">
                             <!-- Essential fields only -->
@@ -645,6 +627,18 @@
                 console.error('Error saving wine:', error);
                 alert('Failed to save wine. Please try again.');
             });
+        }
+        // Add this helper function for markdown conversion
+        function convertMarkdownToHTML(markdown) {
+            if (!markdown) return '';
+    
+            // Simple markdown converter
+         return markdown
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            .replace(/\n- /g, '<br>• ')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>') // Handle links
+            .replace(/\n/g, '<br>');
         }
     </script>
 </body>

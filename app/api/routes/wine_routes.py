@@ -48,8 +48,9 @@ async def add_wine(
 ):
     """Add a new wine to the collection, optionally with label image for analysis."""
     try:
-        # Parse wine data from form
+# Parse wine data from form
         wine_data_dict = json.loads(wine_data)
+        print(f"Received wine data: {wine_data_dict}")  # Add this debug log
         wine_create = WineCreate(**wine_data_dict)
         
         # If an image was uploaded, process it
@@ -72,6 +73,14 @@ async def add_wine(
             
             # Analyze the image with OpenAI using our simpler approach
             analysis_result = openai_service.analyze_wine_label(full_path)
+
+            # If description exists in form data
+            if hasattr(wine_create, 'description') and wine_create.description:
+                    # Use it directly
+                    pass  # It's already set correctly
+            elif wine_create.metadata and 'description' in wine_create.metadata:
+                    # Move from metadata to direct field
+                    wine_create.description = wine_create.metadata['description']
             
             if analysis_result["success"]:
                 # Store the full description

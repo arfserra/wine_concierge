@@ -64,15 +64,19 @@ class OpenAIService:
             
             description = response.choices[0].message.content
             
+            # Extract clean description (plain text without markdown)
+            clean_description = self._extract_clean_description(description)
+            
             # Extract key fields for database filtering/searching
             key_info = self._extract_key_fields(description)
             
             return {
                 "success": True,
                 "description": description,
+                "clean_description": clean_description,
                 "key_info": key_info
             }
-            
+                
         except Exception as e:
             logger.error(f"Error analyzing wine label: {str(e)}")
             return {
@@ -80,6 +84,25 @@ class OpenAIService:
                 "error": str(e)
             }
     
+    def _extract_clean_description(self, markdown_description: str) -> str:
+        """Extract a clean, plain text description from the OpenAI markdown response."""
+        # Look for a line containing "Description:" and extract the content after it
+        import re
+        desc_match = re.search(r'\*\*Description\*\*:?\s*(.*?)(?:\n|$)', markdown_description)
+        if desc_match:
+            return desc_match.group(1).strip()
+        
+        # Fallback: if no description line found, look for a substantial paragraph
+        lines = markdown_description.split('\n')
+        for line in lines:
+            line = line.strip()
+            # Find a line that's not a header and has substantial content
+            if not line.startswith('*') and not line.startswith('-') and len(line) > 40:
+                return line
+        
+        # Last resort
+        return "Wine description from analysis"
+
     def _extract_key_fields(self, description: str) -> Dict[str, Any]:
         """
         Extract key fields from the description for database storage.
@@ -151,8 +174,51 @@ class OpenAIService:
             if general_type_match:
                 key_info["type"] = general_type_match.group(1).strip()
         
-        # For basic info, this simple extraction should be sufficient
-        # In a production system, you might want to use a more robust approach
+        # Extract region and country using similar patterns
+        region_patterns = [
+            r'(?:Region):\s*([^\n]+)',
+            r'(?:Region):\*\*\s*([^\n]+)',
+            r'\*\*(?:Region):\*\*\s*([^\n]+)'
+        ]
+        
+        for pattern in region_patterns:
+            region_match = re.search(pattern, description)
+            if region_match:
+                key_info["region"] = region_match.group(1).strip()
+                break
+                
+        country_patterns = [
+            r'(?:Country):\s*([^\n]+)',
+            r'(?:Country):\*\*\s*([^\n]+)',
+            r'\*\*(?:Country):\*\*\s*([^\n]+)'
+        ]
+        
+        for pattern in country_patterns:
+            country_match = re.search(pattern, description)
+            if country_match:
+                key_info["country"] = country_match.group(1).strip()
+                break
+        
+        # Extract varietal information
+        varietal_patterns = [
+            r'(?:Varietal|Varietals|Grape|Grapes):\s*([^\n]+)',
+            r'(?:Varietal|Varietals|Grape|Grapes):\*\*\s*([^\n]+)',
+            r'\*\*(?:Varietal|Varietals|Grape|Grapes):\*\*\s*([^\n]+)'
+        ]
+        
+        for pattern in varietal_patterns:
+            varietal_match = re.search(pattern, description, re.IGNORECASE)
+            if varietal_match:
+                # Try to split into a list if there are multiple varietals
+                varietals_text = varietal_match.group(1).strip()
+                # Split by common separators
+                if ',' in varietals_text:
+                    key_info["varietal"] = [v.strip() for v in varietals_text.split(',')]
+                elif ' and ' in varietals_text.lower():
+                    key_info["varietal"] = [v.strip() for v in varietals_text.split(' and ')]
+                else:
+                    key_info["varietal"] = [varietals_text]
+                break
         
         return key_info
     
@@ -196,7 +262,7 @@ class OpenAIService:
                 "recommendation": response.choices[0].message.content,
                 "food": food_description
             }
-            
+                
         except Exception as e:
             logger.error(f"Error getting wine pairing: {str(e)}")
             return {
@@ -258,7 +324,7 @@ class OpenAIService:
                 "success": True,
                 "recommendation": response.choices[0].message.content
             }
-            
+                
         except Exception as e:
             logger.error(f"Error analyzing food image: {str(e)}")
             return {
