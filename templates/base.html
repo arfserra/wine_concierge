@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Wine Concierge{% endblock %}</title>
+    <!-- For modern browsers supporting SVG favicons -->
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wine: {
+                            50: '#FCF7F8',
+                            100: '#F5E6E8',
+                            200: '#E8C8CD',
+                            300: '#D9A5AD',
+                            400: '#C97F8C',
+                            500: '#B85A6A',
+                            600: '#A13D50',
+                            700: '#7E2D3D',
+                            800: '#5A202B',
+                            900: '#38141B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for minimal interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Mobile Navigation -->
+    <nav x-data="{ open: false }" class="bg-wine-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <!-- Logo and brand -->
+                <div class="flex items-center">
+                    <a href="/" class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L12 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11C8 11 8 15 12 15C16 15 16 11 16 11" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 17H15L14 21H10L9 17Z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.2"/>
+                        </svg>
+                        <span class="font-semibold text-xl tracking-tight">Wine Concierge</span>
+                    </a>
+                </div>
+                
+                <!-- Hamburger menu button -->
+                <div class="flex items-center sm:hidden">
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-wine-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="flex space-x-4">
+                        {% block nav_links %}
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 {% if request.path == '/' %}bg-wine-600{% endif %}">Home</a>
+                        <a href="/collection" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 {% if request.path == '/collection' %}bg-wine-600{% endif %}">My Collection</a>
+                        <a href="/storage" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 {% if request.path == '/storage' %}bg-wine-600{% endif %}">Storage Setup</a>
+                        <a href="/add-wine" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-wine-600 {% if request.path == '/add-wine' %}bg-wine-600{% endif %}">Add Wine</a>
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                {% block mobile_nav %}
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 {% if request.path == '/' %}bg-wine-600{% endif %}">Home</a>
+                <a href="/collection" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 {% if request.path == '/collection' %}bg-wine-600{% endif %}">My Collection</a>
+                <a href="/storage" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 {% if request.path == '/storage' %}bg-wine-600{% endif %}">Storage Setup</a>
+                <a href="/add-wine" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-wine-600 {% if request.path == '/add-wine' %}bg-wine-600{% endif %}">Add Wine</a>
+                {% endblock %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                {% block content %}
+                <!-- Page content will go here -->
+                {% endblock %}
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2023 Wine Concierge. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    {% block scripts %}
+    <!-- Page-specific scripts will go here -->
+    {% endblock %}
+</body>
+</html>

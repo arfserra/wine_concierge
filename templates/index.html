@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Wine Concierge - Home{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold text-gray-900">Welcome to Wine Concierge</h1>
+
+<!-- Quick Access Section -->
+<div class="bg-wine-50 rounded-lg p-6 mt-6">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Collection Stats Card -->
+        <div 
+            x-data="{ 
+                collectionStats: { total: 0, red: 0, white: 0, rose: 0, sparkling: 0 },
+                loading: true,
+                error: false 
+            }" 
+            x-init="
+                fetch('/api/wines')
+                    .then(response => response.json())
+                    .then(wines => {
+                        collectionStats = {
+                            total: wines.length,
+                            red: wines.filter(w => w.type?.toLowerCase() === 'red').length,
+                            white: wines.filter(w => w.type?.toLowerCase() === 'white').length,
+                            rose: wines.filter(w => w.type?.toLowerCase() === 'rosé').length,
+                            sparkling: wines.filter(w => w.type?.toLowerCase() === 'sparkling').length
+                        };
+                        loading = false;
+                    })
+                    .catch(err => {
+                        console.error('Error loading collection stats:', err);
+                        error = true;
+                        loading = false;
+                    })
+            "
+            class="bg-white overflow-hidden shadow rounded-lg"
+        >
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-wine-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-wine-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                My Collection
+                            </dt>
+                            <dd x-show="loading" class="animate-pulse h-5 bg-gray-200 rounded w-12 mt-1"></dd>
+                            <dd x-show="!loading && !error">
+                                <div class="text-lg font-medium text-gray-900" x-text="collectionStats.total + ' Wines'"></div>
+                                <div class="mt-1 text-sm text-gray-500">
+                                    <span x-text="collectionStats.red"></span> Red · 
+                                    <span x-text="collectionStats.white"></span> White · 
+                                    <span x-text="collectionStats.rose"></span> Rosé · 
+                                    <span x-text="collectionStats.sparkling"></span> Sparkling
+                                </div>
+                            </dd>
+                            <dd x-show="error" class="text-sm text-red-500">
+                                Error loading collection stats
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                <div class="text-sm">
+                    <a href="/collection" class="font-medium text-wine-600 hover:text-wine-500">
+                        View collection
+                        <span aria-hidden="true"> &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Additions Preview -->
+        <div 
+            x-data="{
+                recentWines: [],
+                loading: true,
+                error: false
+            }"
+            x-init="
+                fetch('/api/wines')
+                    .then(response => response.json())
+                    .then(wines => {
+                        // Sort by added date (most recent first)
+                        wines.sort((a, b) => new Date(b.added_date) - new Date(a.added_date));
+                        // Get the most recent 3 wines
+                        recentWines = wines.slice(0, 3);
+                        loading = false;
+                    })
+                    .catch(err => {
+                        console.error('Error loading recent wines:', err);
+                        error = true;
+                        loading = false;
+                    })
+            "
+            class="bg-white overflow-hidden shadow rounded-lg"
+        >
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Recent Additions</h3>
+                <div class="space-y-3">
+                    <!-- Loading state -->
+                    <template x-if="loading">
+                        <div>
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded mb-1 w-1/2"></div>
+                                <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                            <div class="animate-pulse mt-3">
+                                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded mb-1 w-1/2"></div>
+                                <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- Error state -->
+                    <div x-show="error" class="text-center py-3">
+                        <p class="text-sm text-red-500">Failed to load recent wines.</p>
+                    </div>
+                    
+                    <!-- Empty state -->
+                    <div x-show="!loading && !error && recentWines.length === 0" class="text-center py-3">
+                        <p class="text-sm text-gray-500">No wines in your collection yet.</p>
+                        <a href="/add-wine" class="mt-2 inline-block text-sm font-medium text-wine-600 hover:text-wine-500">
+                            Add your first wine
+                        </a>
+                    </div>
+                    
+                    <!-- Wine list -->
+                    <template x-for="wine in recentWines" :key="wine.id">
+                        <div class="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                            <h4 class="font-medium text-gray-900" x-text="wine.name"></h4>
+                            <p class="text-sm text-gray-500">
+                                <span x-text="wine.producer || ''"></span>
+                                <span x-show="wine.vintage" x-text="' (' + wine.vintage + ')'"></span>
+                            </p>
+                            <p class="text-xs text-gray-400" x-text="'Added on ' + new Date(wine.added_date).toLocaleDateString()"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                <div class="text-sm">
+                    <a href="/add-wine" class="font-medium text-wine-600 hover:text-wine-500">
+                        Add a new wine
+                        <span aria-hidden="true"> &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Add Card -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Quick Add</h3>
+                <p class="text-sm text-gray-500 mb-4">
+                    Quickly add a wine to your collection by taking a photo of the label.
+                </p>
+                <a href="/add-wine" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500">
+                    <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Scan Wine Label
+                </a>
+            </div>
+            <div class="bg-gray-50 px-4 py-4 sm:px-6">
+                <div class="text-sm">
+                    <a href="/storage" class="font-medium text-wine-600 hover:text-wine-500">
+                        Configure storage
+                        <span aria-hidden="true"> &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Storage Status Overview -->
+<div 
+    x-data="{
+        storageUnits: [],
+        loading: true,
+        error: false
+    }"
+    x-init="
+        fetch('/api/storage')
+            .then(response => response.json())
+            .then(data => {
+                storageUnits = data;
+                loading = false;
+                
+                // If we have storage units, get wines to calculate usage
+                if (storageUnits.length > 0) {
+                    fetch('/api/wines')
+                        .then(response => response.json())
+                        .then(wines => {
+                            // Calculate usage for each storage unit
+                            storageUnits.forEach(unit => {
+                                const winesInUnit = wines.filter(wine => wine.storage_id === unit.id);
+                                unit.usedPositions = winesInUnit.length;
+                                unit.usagePercentage = Math.round((winesInUnit.length / unit.total_positions) * 100);
+                            });
+                        });
+                }
+            })
+            .catch(err => {
+                console.error('Error loading storage units:', err);
+                error = true;
+                loading = false;
+            })
+    "
+    class="mt-8"
+>
+    <h2 class="text-xl font-medium text-gray-900 mb-4">Storage Status</h2>
+
+    <!-- Loading state -->
+    <div x-show="loading" class="animate-pulse space-y-3">
+        <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+        <div class="h-24 bg-gray-200 rounded"></div>
+    </div>
+
+    <!-- Error state -->
+    <div x-show="error" class="bg-red-50 p-4 rounded-md text-red-800">
+        <p>Failed to load storage information.</p>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && !error && storageUnits.length === 0" class="bg-yellow-50 p-4 rounded-md">
+        <p class="text-yellow-800">You haven't set up any storage units yet.</p>
+        <a href="/storage" class="mt-2 inline-block text-sm font-medium text-wine-600 hover:text-wine-500">
+            Configure your first storage unit
+        </a>
+    </div>
+
+    <!-- Storage units -->
+    <div x-show="!loading && !error && storageUnits.length > 0" class="space-y-4">
+        <template x-for="unit in storageUnits" :key="unit.id">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-medium" x-text="unit.name"></h3>
+                    <span class="px-2 py-1 text-xs rounded-full bg-gray-100" x-text="unit.type"></span>
+                </div>
+                <div class="mt-2">
+                    <div class="flex justify-between text-sm text-gray-500">
+                        <span x-text="unit.usedPositions + ' of ' + unit.total_positions + ' positions used'"></span>
+                        <span x-text="unit.usagePercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                        <div 
+                            class="bg-wine-600 h-2.5 rounded-full" 
+                            :style="`width: ${unit.usagePercentage}%`"
+                            :class="{'bg-yellow-500': unit.usagePercentage >= 80, 'bg-red-500': unit.usagePercentage >= 95}"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}

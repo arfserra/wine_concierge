@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Add Wine - Wine Concierge{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold text-gray-900">Add Wine to Collection</h1>
+
+<div 
+    x-data="{ 
+        step: 1,
+        labelImage: null,
+        labelImagePreview: null,
+        analyzing: false,
+        analysisComplete: false,
+        analysisError: false,
+        wineData: {
+            name: '',
+            producer: '',
+            vintage: '',
+            type: '',
+            region: '',
+            country: '',
+            storage_id: '',
+            position: '',
+            description: ''
+        },
+        storageUnits: [],
+        availablePositions: [],
+        saving: false,
+        savingError: '',
+        
+        // Methods
+        resetLabel() {
+            this.labelImage = null;
+            this.labelImagePreview = null;
+            this.analysisComplete = false;
+            document.getElementById('label-file-input').value = '';
+            document.getElementById('camera-input').value = '';
+        },
+        
+        async analyzeLabel() {
+            if (!this.labelImage) return;
+            
+            this.analyzing = true;
+            
+            const formData = new FormData();
+            formData.append('label_image', this.labelImage);
+            
+            try {
+                const response = await fetch('/api/wines/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Label analysis failed');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Set wine data from analysis
+                    if (data.key_info) {
+                        this.wineData.name = data.key_info.name || '';
+                        this.wineData.producer = data.key_info.producer || '';
+                        this.wineData.vintage = data.key_info.vintage || '';
+                        this.wineData.type = data.key_info.type || '';
+                        this.wineData.region = data.key_info.region || '';
+                        this.wineData.country = data.key_info.country || '';
+                    }
+                    
+                    this.wineData.description = data.description || '';
+                    
+                    if (data.label_image_url) {
+                        this.wineData.label_image_url = data.label_image_url;
+                    }
+                    
+                    this.analysisComplete = true;
+                    
+                    // Fetch storage units for the next step
+                    await this.fetchStorageUnits();
+                } else {
+                    this.analysisError = true;
+                }
+            } catch (error) {
+                console.error('Error analyzing label:', error);
+                this.analysisError = true;
+            } finally {
+                this.analyzing = false;
+            }
+        },
+        
+        async fetchStorageUnits() {
+            try {
+                const response = await fetch('/api/storage');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch storage units');
+                }
+                
+                this.storageUnits = await response.json();
+                
+                if (this.storageUnits.length > 0) {
+                    this.wineData.storage_id = this.storageUnits[0].id;
+                    await this.fetchAvailablePositions(this.storageUnits[0].id);
+                }
+            } catch (error) {
+                console.error('Error fetching storage units:', error);
+            }
+        },
+        
+        async fetchAvailablePositions(storageId) {
+            if (!storageId) return;
+            
+            try {
+                // First get storage details
+                const storageResponse = await fetch(`/api/storage/${storageId}`);
+                if (!storageResponse.ok) {
+                    throw new Error('Failed to fetch storage details');
+                }
+                
+                const storageData = await storageResponse.json();
+                
+                // Then get wines to find occupied positions
+                const winesResponse = await fetch('/api/wines');
+                if (!winesResponse.ok) {
+                    throw new Error('Failed to fetch wines');
+                }
+                
+                const wines = await winesResponse.json();
+                
+                // Get occupied positions in this storage
+                const occupiedPositions = new Set(
+                    wines
+                        .filter(wine => wine.storage_id === storageId)
+                        .map(wine => wine.position)
+                );
+                
+                // Generate all positions based on storage configuration
+                const allPositions = this.generatePositions(storageData);
+                
+                // Filter available positions
+                this.availablePositions = allPositions.filter(
+                    position => !occupiedPositions.has(position)
+                );
+                
+                // Set default position if available
+                if (this.availablePositions.length > 0) {
+                    this.wineData.position = this.availablePositions[0];
+                } else {
+                    this.wineData.position = '';
+                }
+            } catch (error) {
+                console.error('Error fetching available positions:', error);
+                this.availablePositions = [];
+            }
+        },
+        
+        generatePositions(storage) {
+            const positions = [];
+            const scheme = storage.position_naming_scheme;
+            
+            // This is a simplified position generator
+            // In a real application, you would need more complex logic based on the storage configuration
+            if (storage.zones && storage.zones.length > 0) {
+                for (const zone of storage.zones) {
+                    const dimensions = zone.dimensions || {};
+                    const rows = dimensions.rows || 1;
+                    const columns = dimensions.columns || 1;
+                    
+                    for (let r = 1; r <= rows; r++) {
+                        for (let c = 1; c <= columns; c++) {
+                            positions.push(`${zone.name}-${r}-${c}`);
+                        }
+                    }
+                }
+            } else {
+                // Fallback for simple storage
+                for (let i = 1; i <= storage.total_positions; i++) {
+                    positions.push(`Position ${i}`);
+                }
+            }
+            
+            return positions;
+        },
+        
+        async saveWine() {
+            if (!this.wineData.name || !this.wineData.storage_id || !this.wineData.position) {
+                this.savingError = 'Please fill in all required fields';
+                return;
+            }
+            
+            this.saving = true;
+            this.savingError = '';
+            
+            const formData = new FormData();
+            
+            // Add wine data
+            formData.append('wine_data', JSON.stringify(this.wineData));
+            
+            // Add label image if it exists
+            if (this.labelImage) {
+                formData.append('label_image', this.labelImage);
+            }
+            
+            try {
+                const response = await fetch('/api/wines', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save wine');
+                }
+                
+                // Success - redirect to collection page
+                window.location.href = '/collection?success=true';
+            } catch (error) {
+                console.error('Error saving wine:', error);
+                this.savingError = 'Failed to save wine. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        }
+    }"
+    x-init="fetchStorageUnits"
+    class="mt-6"
+>
+    <!-- Step tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+            <button 
+                @click="step = 1" 
+                :class="{'border-wine-500 text-wine-600': step === 1, 'border-transparent text-gray-500': step !== 1}" 
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+            >
+                1. Scan Label
+            </button>
+            <button 
+                @click="step = 2" 
+                :class="{'border-wine-500 text-wine-600': step === 2, 'border-transparent text-gray-500': step !== 2}" 
+                :disabled="!analysisComplete && !wineData.name"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+            >
+                2. Add Details
+            </button>
+        </nav>
+    </div>
+
+    <!-- Step 1: Scan Label -->
+    <div x-show="step === 1" class="bg-white shadow rounded-lg p-6">
+        <div class="text-center mb-6">
+            <h2 class="text-xl font-medium text-gray-800 mb-2">Scan Wine Label</h2>
+            <p class="text-gray-600">Take a photo of your wine label or upload an existing image.</p>
+        </div>
+        
+        <!-- Label image upload -->
+        <div class="space-y-6">
+            <!-- Image preview -->
+            <div x-show="labelImagePreview" class="flex flex-col items-center justify-center mb-4">
+                <img :src="labelImagePreview" class="max-h-64 rounded-md object-contain" alt="Wine Label Preview">
+                <button 
+                    @click="resetLabel" 
+                    class="mt-2 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                    Take Another Photo
+                </button>
+            </div>
+            
+            <!-- Camera/upload buttons -->
+            <div x-show="!labelImagePreview" class="space-y-4">
+                <!-- Camera button -->
+                <button 
+                    @click="document.getElementById('camera-input').click()" 
+                    class="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
+                >
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Take Photo
+                </button>
+                <input 
+                    id="camera-input" 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" 
+                    class="hidden"
+                    @change="
+                        labelImage = $event.target.files[0];
+                        if (labelImage) {
+                            const reader = new FileReader();
+                            reader.onload = e => labelImagePreview = e.target.result;
+                            reader.readAsDataURL(labelImage);
+                        }
+                    "
+                >
+                
+                <!-- Upload button -->
+                <div class="flex items-center">
+                    <span class="flex-grow border-t border-gray-200"></span>
+                    <span class="px-3 text-sm text-gray-500">or</span>
+                    <span class="flex-grow border-t border-gray-200"></span>
+                </div>
+                
+                <button 
+                    @click="document.getElementById('label-file-input').click()" 
+                    class="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
+                >
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a3 3 0 006 0V7a1 1 0 112 0v4a5 5 0 01-10 0V7a5 5 0 0110 0v1.586a1 1 0 01-.293.707l-1.414 1.414a1 1 0 01-1.414 0L9.586 9.414A1 1 0 019.293 8.707L10 8V7a2 2 0 10-4 0v4a3 3 0 006 0V7a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Upload from Device
+                </button>
+                <input 
+                    id="label-file-input" 
+                    type="file" 
+                    accept="image/*" 
+                    class="hidden"
+                    @change="
+                        labelImage = $event.target.files[0];
+                        if (labelImage) {
+                            const reader = new FileReader();
+                            reader.onload = e => labelImagePreview = e.target.result;
+                            reader.readAsDataURL(labelImage);
+                        }
+                    "
+                >
+            </div>
+            
+            <!-- Analysis button -->
+            <div x-show="labelImagePreview" class="pt-4">
+                <button 
+                    @click="analyzeLabel()" 
+                    class="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
+                    :disabled="analyzing"
+                >
+                    <template x-if="analyzing">
+                        <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="analyzing ? 'Analyzing Label...' : 'Analyze Label'"></span>
+                </button>
+                
+                <div class="mt-2 flex justify-center">
+                    <button 
+                        @click="step = 2" 
+                        class="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Skip analysis and enter details manually
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Analysis error message -->
+            <div x-show="analysisError" class="mt-4 p-4 bg-red-50 rounded border border-red-200 text-red-800">
+                <p>We couldn't analyze your wine label. Please try again or enter details manually.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Step 2: Add Details -->
+    <div x-show="step === 2" class="bg-white shadow rounded-lg p-6">
+        <div class="text-center mb-6">
+            <h2 class="text-xl font-medium text-gray-800 mb-2">Wine Details</h2>
+            <p class="text-gray-600">Add information about your wine</p>
+        </div>
+        
+        <form @submit.prevent="saveWine" class="space-y-6">
+            <!-- Wine name -->
+            <div>
+                <label for="wine-name" class="block text-sm font-medium text-gray-700">Wine Name*</label>
+                <input 
+                    type="text" 
+                    id="wine-name" 
+                    x-model="wineData.name" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm" 
+                    required
+                >
+            </div>
+            
+            <!-- Wine type -->
+            <div>
+                <label for="wine-type" class="block text-sm font-medium text-gray-700">Wine Type</label>
+                <select 
+                    id="wine-type" 
+                    x-model="wineData.type" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                >
+                    <option value="">Select Type</option>
+                    <option value="Red">Red</option>
+                    <option value="White">White</option>
+                    <option value="Rosé">Rosé</option>
+                    <option value="Sparkling">Sparkling</option>
+                    <option value="Dessert">Dessert</option>
+                </select>
+            </div>
+            
+            <!-- Optional details toggle -->
+            <div x-data="{showMore: false}">
+                <button 
+                    type="button"
+                    @click="showMore = !showMore"
+                    class="text-sm text-wine-600 hover:text-wine-500"
+                >
+                    <span x-show="!showMore">+ Show more details</span>
+                    <span x-show="showMore">- Hide details</span>
+                </button>
+                
+                <!-- More details -->
+                <div x-show="showMore" class="mt-4 space-y-6">
+                    <!-- Producer -->
+                    <div>
+                        <label for="wine-producer" class="block text-sm font-medium text-gray-700">Producer</label>
+                        <input 
+                            type="text" 
+                            id="wine-producer" 
+                            x-model="wineData.producer" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Vintage -->
+                    <div>
+                        <label for="wine-vintage" class="block text-sm font-medium text-gray-700">Vintage</label>
+                        <input 
+                            type="number" 
+                            id="wine-vintage" 
+                            x-model="wineData.vintage" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                            min="1900"
+                            max="2100"
+                        >
+                    </div>
+                    
+                    <!-- Region -->
+                    <div>
+                        <label for="wine-region" class="block text-sm font-medium text-gray-700">Region</label>
+                        <input 
+                            type="text" 
+                            id="wine-region" 
+                            x-model="wineData.region" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Country -->
+                    <div>
+                        <label for="wine-country" class="block text-sm font-medium text-gray-700">Country</label>
+                        <input 
+                            type="text" 
+                            id="wine-country" 
+                            x-model="wineData.country" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Description -->
+                    <div>
+                        <label for="wine-description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea 
+                            id="wine-description" 
+                            x-model="wineData.description" 
+                            rows="4" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                        ></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Storage location section -->
+            <div class="pt-4 border-t border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Storage Location</h3>
+                
+                <!-- No storage units warning -->
+                <div x-show="storageUnits.length === 0" class="p-4 border border-yellow-300 bg-yellow-50 rounded-md text-yellow-800">
+                    <p>You don't have any storage units configured yet. Please set up a storage unit first.</p>
+                    <a href="/storage" class="mt-2 inline-block text-wine-600 hover:text-wine-700 font-medium">
+                        Configure Storage
+                    </a>
+                </div>
+                
+                <!-- Storage selection -->
+                <div x-show="storageUnits.length > 0" class="space-y-4">
+                    <!-- Storage unit -->
+                    <div>
+                        <label for="storage-unit" class="block text-sm font-medium text-gray-700">Storage Unit*</label>
+                        <select 
+                            id="storage-unit" 
+                            x-model="wineData.storage_id" 
+                            @change="fetchAvailablePositions($event.target.value)"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                            required
+                        >
+                            <template x-for="unit in storageUnits" :key="unit.id">
+                                <option :value="unit.id" x-text="unit.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Position -->
+                    <div>
+                        <label for="storage-position" class="block text-sm font-medium text-gray-700">Position*</label>
+                        <select 
+                            id="storage-position" 
+                            x-model="wineData.position" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-wine-500 focus:ring-wine-500 sm:text-sm"
+                            required
+                        >
+                            <template x-for="position in availablePositions" :key="position">
+                                <option :value="position" x-text="position"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- No available positions warning -->
+                    <div x-show="availablePositions.length === 0" class="mt-2 text-sm text-red-600">
+                        No available positions in this storage unit. Please select another storage unit or free up space.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Error message -->
+            <div x-show="savingError" class="p-4 bg-red-50 rounded border border-red-200 text-red-800">
+                <p x-text="savingError"></p>
+            </div>
+            
+            <!-- Form buttons -->
+            <div class="pt-4 flex justify-between">
+                <button 
+                    type="button"
+                    @click="step = 1" 
+                    class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
+                >
+                    Back
+                </button>
+                
+                <button 
+                    type="submit"
+                    class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-wine-600 hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wine-500"
+                    :disabled="!wineData.name || !wineData.storage_id || !wineData.position || saving"
+                >
+                    <template x-if="saving">
+                        <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="saving ? 'Saving...' : 'Save Wine'"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import api from '/static/js/api.js';
+  import labelScanner from '/static/js/label-scanner.js';
+  import storageManager from '/static/js/storage-manager.js';
+  
+  // Page-specific code can go here
+  // Or you can use the imported modules with Alpine.js
+</script>
+{% endblock %}
